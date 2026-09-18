@@ -11,6 +11,7 @@
 
 import * as THREE from 'three';
 import { CORES, LARGURA_PISTA, FOG, Z_RECICLA } from '../config.js';
+import { texturaHalo } from './textures.js';
 
 const COMPRIMENTO = FOG.longe + 30;
 const ESPACO_TRAVESSA = 4;
@@ -29,7 +30,7 @@ export class Trilha {
     /* ---------- chao ---------- */
     const chao = new THREE.Mesh(
       new THREE.PlaneGeometry(larguraTotal + 0.6, COMPRIMENTO),
-      new THREE.MeshBasicMaterial({ color: 0x050a1e })
+      new THREE.MeshBasicMaterial({ color: 0x0b1440 })
     );
     chao.rotation.x = -Math.PI / 2;
     chao.position.set(0, -0.02, Z_RECICLA - COMPRIMENTO / 2);
@@ -43,7 +44,7 @@ export class Trilha {
       const externo = (i === 0 || i === bordas.length - 1);
       const geo = new THREE.BoxGeometry(externo ? 0.14 : 0.08, 0.05, COMPRIMENTO);
       const mat = new THREE.MeshBasicMaterial({
-        color: externo ? CORES.ciano : CORES.cianoEscuro
+        color: externo ? CORES.ciano : CORES.cianoMedio
       });
       const trilho = new THREE.Mesh(geo, mat);
       trilho.position.set(x, 0.01, Z_RECICLA - COMPRIMENTO / 2);
@@ -54,7 +55,7 @@ export class Trilha {
 
     /* ---------- travessas ---------- */
     const geoTravessa = new THREE.BoxGeometry(larguraTotal + 0.3, 0.04, 0.16);
-    this.matTravessa = new THREE.MeshBasicMaterial({ color: 0x137a94 });
+    this.matTravessa = new THREE.MeshBasicMaterial({ color: 0x2ba8c9 });
     this.travessas = new THREE.InstancedMesh(geoTravessa, this.matTravessa, TRAVESSAS);
     this.travessas.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.travessas.frustumCulled = false;
@@ -70,6 +71,43 @@ export class Trilha {
     this.postes.renderOrder = 1;
     this.grupo.add(this.postes);
 
+    /* ---------- brilho do horizonte ---------- */
+    // Onde a pista mergulha no fog nasce uma mancha de luz. Custa um plano
+    // aditivo e e o que tira a cena da sensacao de "preto com riscos".
+    const zHorizonte = Z_RECICLA - FOG.longe + 6;
+    this.brilhoHorizonte = new THREE.Mesh(
+      new THREE.PlaneGeometry(170, 17),
+      new THREE.MeshBasicMaterial({
+        map: texturaHalo(0x2f7fff, 0.05),
+        color: 0x6fd6ff,
+        transparent: true,
+        opacity: 0.42,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        fog: false
+      })
+    );
+    this.brilhoHorizonte.position.set(0, 0.2, zHorizonte);
+    this.brilhoHorizonte.renderOrder = -5;
+    this.grupo.add(this.brilhoHorizonte);
+
+    // Faixa estreita e quente logo acima do chao: o "sol" do synthwave.
+    this.faixaHorizonte = new THREE.Mesh(
+      new THREE.PlaneGeometry(56, 5),
+      new THREE.MeshBasicMaterial({
+        map: texturaHalo(CORES.magenta, 0.04),
+        color: 0xff8ac0,
+        transparent: true,
+        opacity: 0.4,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        fog: false
+      })
+    );
+    this.faixaHorizonte.position.set(0, 0.25, zHorizonte + 2);
+    this.faixaHorizonte.renderOrder = -4;
+    this.grupo.add(this.faixaHorizonte);
+
     this.meiaLarguraExterna = meia + 0.55;
     this.dummy = new THREE.Object3D();
     this.offsetTravessa = 0;
@@ -78,8 +116,8 @@ export class Trilha {
     this.pulso = 0;
 
     this.corTrilhoBase = new THREE.Color(CORES.ciano);
-    this.corTrilhoInterno = new THREE.Color(CORES.cianoEscuro);
-    this.corTravessaBase = new THREE.Color(0x137a94);
+    this.corTrilhoInterno = new THREE.Color(CORES.cianoMedio);
+    this.corTravessaBase = new THREE.Color(0x2ba8c9);
     this.corPosteBase = new THREE.Color(CORES.magenta);
 
     this.escreverInstancias();
@@ -130,5 +168,8 @@ export class Trilha {
     }
     this.matTravessa.color.copy(this.corTravessaBase).multiplyScalar(0.7 + pulso * 0.55);
     this.matPoste.color.copy(this.corPosteBase).multiplyScalar(0.55 + pulso * 0.5);
+    this.brilhoHorizonte.material.opacity = 0.36 + pulso * 0.14
+      + Math.sin(this.tempo * 0.7) * 0.04;
+    this.faixaHorizonte.material.opacity = 0.34 + pulso * 0.22;
   }
 }

@@ -30,9 +30,9 @@ export class Mundo {
     this.camera.position.set(0, CAMERA.altura, CAMERA.recuo);
 
     /* ---------- luzes (so duas, e de proposito) ---------- */
-    this.luzAmbiente = new THREE.AmbientLight(0x5b6ea8, 1.6);
+    this.luzAmbiente = new THREE.AmbientLight(0x6d81c4, 2.0);
     this.cena.add(this.luzAmbiente);
-    this.luzSol = new THREE.DirectionalLight(0xeaf4ff, 1.5);
+    this.luzSol = new THREE.DirectionalLight(0xfff0e6, 1.8);
     this.luzSol.position.set(-0.7, 1.0, 0.45);
     this.cena.add(this.luzSol);
 

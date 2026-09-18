@@ -272,6 +272,44 @@ body.sem-scanlines #scanlines { display: none; }
   line-height: 1.5;
 }
 
+/* Legenda dos obstaculos: a cor diz a acao. Nasceu de um playtest em que
+   o pessoal tentava pular a barreira - com o codigo de cor na tela de
+   abertura, a leitura vira reflexo antes mesmo da primeira corrida. */
+.legenda-obstaculos {
+  list-style: none;
+  display: flex;
+  gap: calc(var(--u) * 1.6);
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: calc(var(--u) * 0.4);
+}
+.legenda-obstaculos li {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 0.8);
+  font-size: calc(var(--u) * 1.6);
+  letter-spacing: calc(var(--u) * 0.16);
+  padding: calc(var(--u) * 0.5) calc(var(--u) * 1.2);
+  background: rgba(2, 3, 10, 0.72);
+  border: 1px solid rgba(34, 230, 255, 0.22);
+}
+.legenda-obstaculos i {
+  width: calc(var(--u) * 1.6);
+  height: calc(var(--u) * 1.6);
+  flex: none;
+}
+.legenda-obstaculos b { font-weight: 400; color: var(--texto-fraco); }
+.legenda-obstaculos span { font-weight: 700; }
+.leg-pedra i { background: #ff8a3d; box-shadow: 0 0 calc(var(--u) * 0.9) rgba(255, 138, 61, 0.7); }
+.leg-pedra span { color: #ff8a3d; }
+.leg-laser i { background: var(--magenta); box-shadow: 0 0 calc(var(--u) * 0.9) rgba(255, 47, 135, 0.7); }
+.leg-laser span { color: var(--magenta); }
+.leg-barreira i {
+  background: repeating-linear-gradient(45deg,
+    #ff3b30 0, #ff3b30 25%, #dbe4f5 25%, #dbe4f5 50%);
+}
+.leg-barreira span { color: #ff6b5e; }
+
 .chamada {
   margin-top: calc(var(--u) * 1);
   font-size: calc(var(--u) * 2.6);

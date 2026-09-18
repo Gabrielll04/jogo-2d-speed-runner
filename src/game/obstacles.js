@@ -5,13 +5,24 @@
      PORTAO (feixe de laser)   -> DESLIZAR
      PAREDE (satelite/detrito) -> TROCAR DE PISTA
 
-   A forma de cada um grita a acao certa mesmo com 180 linhas de resolucao:
-   pedra redonda no chao, feixe brilhante no alto, bloco macico inteiro.
+   A forma E a cor dizem a acao, mesmo com 180 linhas de resolucao:
+
+     ambar/laranja + pedra baixa e larga   -> PULE
+     magenta + feixes altos e finos        -> DESLIZE
+     metal claro com listras vermelhas,
+     alto e fechando a pista inteira       -> DESVIE
+
+   A barreira nasceu de um playtest: como satelite flutuante ela parecia
+   transponivel e o pessoal tentava pular. Agora ela vai do chao ate acima
+   da linha dos olhos, tem listras de perigo e nao balanca - objeto fixo,
+   nao destroco a deriva.
    ========================================================================== */
 
 import * as THREE from 'three';
 import { CORES } from '../config.js';
-import { texturaLaser, texturaHalo } from './../gfx/textures.js';
+import {
+  texturaLaser, texturaHalo, texturaPerigo, texturaRocha
+} from './../gfx/textures.js';
 import { TIPO, CAIXAS } from './hitboxes.js';
 
 // Reexportados para quem so quer desenhar/colidir sem saber de onde vem.
@@ -34,17 +45,35 @@ function garantirRecursos() {
   }
   rochaGeo.computeVertexNormals();
 
-  recursos = {
-    rochaGeo,
-    rochaMat: new THREE.MeshLambertMaterial({
-      color: 0x3a3550, emissive: 0x2a0d1c, emissiveIntensity: 0.9, flatShading: true
-    }),
-    veioMat: new THREE.MeshBasicMaterial({ color: CORES.magenta }),
-    veioGeo: new THREE.BoxGeometry(0.16, 0.1, 0.9),
+  // A textura de perigo cobre a barreira inteira: repete para as listras
+  // sairem do tamanho certo em vez de esticadas.
+  const perigo = texturaPerigo();
+  perigo.repeat.set(1, 1);
 
+  recursos = {
+    /* ---------- PULE: rocha quente ---------- */
+    rochaGeo,
+    // Clara e quente: a versao anterior era cinza-arroxeada e sumia no
+    // espaco preto - o pessoal batia sem ter visto a pedra. O emissive fica
+    // baixo para as manchas e os veios da textura continuarem visiveis.
+    rochaMat: new THREE.MeshLambertMaterial({
+      map: texturaRocha(),
+      color: 0xffc9a0,
+      emissive: 0xff7a2a,
+      emissiveIntensity: 0.22,
+      flatShading: true
+    }),
+    veioMat: new THREE.MeshBasicMaterial({ color: 0xffa63d }),
+    veioGeo: new THREE.BoxGeometry(0.2, 0.12, 1.0),
+    brasaMat: new THREE.SpriteMaterial({
+      map: texturaHalo(0xff8a3d, 0.22), transparent: true, opacity: 0.55,
+      depthWrite: false, blending: THREE.AdditiveBlending
+    }),
+
+    /* ---------- DESLIZE: portao de laser ---------- */
     posteGeo: new THREE.BoxGeometry(0.16, 2.7, 0.16),
     posteMat: new THREE.MeshLambertMaterial({
-      color: 0x1a1030, emissive: CORES.magenta, emissiveIntensity: 0.4, flatShading: true
+      color: 0x2a1240, emissive: CORES.magenta, emissiveIntensity: 0.55, flatShading: true
     }),
     feixeGeo: new THREE.BoxGeometry(2.0, 0.34, 0.1),
     feixeMat: new THREE.MeshBasicMaterial({
@@ -52,19 +81,25 @@ function garantirRecursos() {
       blending: THREE.AdditiveBlending, depthWrite: false
     }),
 
-    corpoGeo: new THREE.BoxGeometry(1.5, 1.5, 0.8),
-    corpoMat: new THREE.MeshLambertMaterial({
-      color: 0x2b2f4a, emissive: 0x141a33, emissiveIntensity: 1, flatShading: true
+    /* ---------- DESVIE: barreira ---------- */
+    barreiraGeo: new THREE.BoxGeometry(1.94, 2.55, 0.5),
+    // Basic, nao Lambert: o emissive azulado da cena lavava o vermelho das
+    // listras justamente na hora de gritar "bloqueado". O volume ja vem
+    // pintado no gradiente da propria textura.
+    barreiraMat: new THREE.MeshBasicMaterial({ map: perigo }),
+    pilarGeo: new THREE.BoxGeometry(0.2, 2.95, 0.6),
+    pilarMat: new THREE.MeshLambertMaterial({
+      color: 0xd2ddf0, emissive: 0x39496b, emissiveIntensity: 1.0, flatShading: true
     }),
-    painelGeo: new THREE.BoxGeometry(0.5, 1.2, 0.08),
-    painelMat: new THREE.MeshLambertMaterial({
-      color: 0x123a5e, emissive: CORES.ciano, emissiveIntensity: 0.28, flatShading: true
-    }),
-    luzGeo: new THREE.BoxGeometry(1.52, 0.12, 0.82),
-    // Compartilhado por todos os satelites: a piscada e atualizada uma unica
+    luzGeo: new THREE.BoxGeometry(2.14, 0.16, 0.66),
+    // Compartilhado por todas as barreiras: a piscada e atualizada uma unica
     // vez por quadro, no pool, em vez de uma vez por obstaculo.
-    luzMat: new THREE.MeshBasicMaterial({ color: CORES.magenta }),
-    corLuz: new THREE.Color(CORES.magenta),
+    luzMat: new THREE.MeshBasicMaterial({ color: 0xff4d3d }),
+    corLuz: new THREE.Color(0xff4d3d),
+    haloBarreiraMat: new THREE.SpriteMaterial({
+      map: texturaHalo(0xff3b30, 0.3), transparent: true, opacity: 0.38,
+      depthWrite: false, blending: THREE.AdditiveBlending
+    }),
 
     haloMat: new THREE.SpriteMaterial({
       map: texturaHalo(CORES.magenta, 0.25), transparent: true, opacity: 0.35,
@@ -100,6 +135,12 @@ class Obstaculo {
       veio.position.y = 0.42;
       this.grupo.add(veio);
       this.veio = veio;
+      // Brasa: garante que a pedra se destaque do espaco preto mesmo longe.
+      const brasa = new THREE.Sprite(r.brasaMat.clone());
+      brasa.scale.setScalar(2.5);
+      brasa.position.y = 0.38;
+      this.brasa = brasa;
+      this.grupo.add(brasa);
     } else if (tipo === TIPO.PORTAO) {
       for (const lado of [-1, 1]) {
         const poste = new THREE.Mesh(r.posteGeo, r.posteMat);
@@ -119,25 +160,29 @@ class Obstaculo {
       this.grupo.add(halo);
       this.halo = halo;
     } else {
-      const corpo = new THREE.Mesh(r.corpoGeo, r.corpoMat);
-      corpo.position.y = 1.1;
-      this.grupo.add(corpo);
+      // Placa macica do chao ate acima da linha dos olhos do jogador.
+      const placa = new THREE.Mesh(r.barreiraGeo, r.barreiraMat);
+      placa.position.y = 1.28;
+      this.grupo.add(placa);
+
+      // Pilares claros que passam do topo: reforcam a altura na silhueta.
       for (const lado of [-1, 1]) {
-        const painel = new THREE.Mesh(r.painelGeo, r.painelMat);
-        painel.position.set(lado * 0.98, 1.1, 0);
-        painel.rotation.y = lado * 0.22;
-        this.grupo.add(painel);
+        const pilar = new THREE.Mesh(r.pilarGeo, r.pilarMat);
+        pilar.position.set(lado * 1.02, 1.48, 0);
+        this.grupo.add(pilar);
       }
+
+      // Barra de alerta piscando no topo.
       const luz = new THREE.Mesh(r.luzGeo, r.luzMat);
-      luz.position.y = 1.72;
+      luz.position.y = 2.72;
       this.luz = luz;
       this.grupo.add(luz);
-      const antena = new THREE.Mesh(
-        new THREE.BoxGeometry(0.08, 0.6, 0.08),
-        r.posteMat
-      );
-      antena.position.y = 2.0;
-      this.grupo.add(antena);
+
+      const halo = new THREE.Sprite(r.haloBarreiraMat.clone());
+      halo.scale.setScalar(4.2);
+      halo.position.y = 1.6;
+      this.haloBarreira = halo;
+      this.grupo.add(halo);
     }
   }
 
@@ -166,6 +211,7 @@ class Obstaculo {
       this.rocha.rotation.x += dt * this.giro * 0.6;
       this.rocha.rotation.y += dt * this.giro;
       this.veio.rotation.copy(this.rocha.rotation);
+      this.brasa.material.opacity = 0.42 + Math.abs(Math.sin(tempo * 3.1 + this.giro)) * 0.3;
     } else if (this.tipo === TIPO.PORTAO) {
       // Feixes correm e piscam fora de fase: parece energia de verdade.
       for (let i = 0; i < this.feixes.length; i++) {
@@ -176,7 +222,8 @@ class Obstaculo {
       }
       this.halo.material.opacity = 0.22 + Math.abs(Math.sin(tempo * 4)) * 0.2;
     } else {
-      this.grupo.rotation.z = Math.sin(tempo * 0.9 + this.grupo.position.x) * 0.06;
+      // Barreira NAO balanca: coisa fixa e intransponivel nao fica a deriva.
+      this.haloBarreira.material.opacity = 0.2 + Math.abs(Math.sin(tempo * 3.6)) * 0.22;
     }
   }
 

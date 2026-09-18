@@ -23,7 +23,7 @@ function finalizar(canvas, { repetirX = false, nitido = true } = {}) {
   tex.minFilter = THREE.LinearMipmapLinearFilter;
   tex.generateMipmaps = true;
   tex.wrapS = repetirX ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
-  tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.wrapT = repetirX ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
   if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace;
   tex.needsUpdate = true;
   return tex;
@@ -326,6 +326,89 @@ export function texturaDisco() {
       g.addColorStop(1, rgba(0xff2f87, 0.05 * pulso));
       ctx.fillStyle = g;
       ctx.fillRect(x, 0, 1, A);
+    }
+    return finalizar(cv, { repetirX: true, nitido: true });
+  });
+}
+
+/* --------------------------------------------------------------------------
+   LISTRAS DE PERIGO - a linguagem universal de "nao passa por aqui".
+   Diagonais claras sobre metal escuro, para a barreira que exige trocar de
+   pista. Repete em X para envolver a estrutura inteira.
+   -------------------------------------------------------------------------- */
+export function texturaPerigo() {
+  return memo('perigo', () => {
+    const L = 32, A = 32;
+    const cv = novoCanvas(L, A);
+    const ctx = cv.getContext('2d');
+
+    // Vermelho sobre claro, como cancela de obra: e a leitura mais imediata
+    // de "bloqueado" que existe, e destaca contra o espaco preto.
+    ctx.fillStyle = '#dbe4f5';
+    ctx.fillRect(0, 0, L, A);
+
+    // Faixas a 45 graus com periodo 16 px. Como 32 e multiplo de 16, o
+    // desenho fecha nas emendas: da pra repetir sem virar xadrez. Faixa
+    // grossa de proposito - em 320x180 uma listra fina vira ruido.
+    ctx.fillStyle = '#ff3b30';
+    for (let i = -A; i < L + A; i += 16) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i + 8, 0);
+      ctx.lineTo(i + 8 - A, A);
+      ctx.lineTo(i - A, A);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Sombreado vertical: da volume sem precisar de luz.
+    const g = ctx.createLinearGradient(0, 0, 0, A);
+    g.addColorStop(0, 'rgba(255,255,255,0.18)');
+    g.addColorStop(0.55, 'rgba(0,0,0,0)');
+    g.addColorStop(1, 'rgba(0,0,0,0.28)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, L, A);
+    return finalizar(cv, { repetirX: true, nitido: true });
+  });
+}
+
+/* --------------------------------------------------------------------------
+   ROCHA QUENTE - crosta clara com veios incandescentes. O asteroide precisa
+   saltar do fundo escuro, senao o jogador perde por nao ter visto a pedra.
+   -------------------------------------------------------------------------- */
+export function texturaRocha() {
+  return memo('rocha', () => {
+    const L = 64, A = 32;
+    const cv = novoCanvas(L, A);
+    const ctx = cv.getContext('2d');
+    const rng = criarRng(20260215);
+
+    ctx.fillStyle = '#9a7f74';
+    ctx.fillRect(0, 0, L, A);
+
+    // Manchas de crosta, do claro ao escuro.
+    for (let i = 0; i < 90; i++) {
+      const tom = rng();
+      ctx.fillStyle = tom > 0.7 ? '#c4a693' : (tom > 0.4 ? '#7d6459' : '#5d4a45');
+      ctx.globalAlpha = entre(rng, 0.3, 0.8);
+      ctx.fillRect(inteiro(rng, 0, L), inteiro(rng, 0, A), inteiro(rng, 2, 9), inteiro(rng, 2, 7));
+    }
+    ctx.globalAlpha = 1;
+
+    // Veios de magma: o que garante leitura contra o espaco preto.
+    for (let i = 0; i < 9; i++) {
+      let x = entre(rng, 0, L);
+      let y = entre(rng, 0, A);
+      ctx.strokeStyle = rng() > 0.5 ? '#ff8a3d' : '#ffd23f';
+      ctx.lineWidth = entre(rng, 1, 2.4);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      for (let n = 0; n < 4; n++) {
+        x += entre(rng, -12, 12);
+        y += entre(rng, -6, 6);
+        ctx.lineTo(x, y);
+      }
+      ctx.stroke();
     }
     return finalizar(cv, { repetirX: true, nitido: true });
   });

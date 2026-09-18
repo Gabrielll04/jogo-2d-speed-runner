@@ -105,24 +105,44 @@ chrome.exe --kiosk --autoplay-policy=no-user-gesture-required http://localhost:3
 
 ## Placar em rede local
 
-Desligado por padrão. Ligado, ele junta as pontuações de vários PCs num
-ranking só, e dá uma página de telão para projetar.
+O jogo junta as pontuações de todos os PCs num ranking só e mostra numa
+página de telão. Quem serve o jogo e quem guarda as pontuações é o **mesmo**
+`server.js`.
 
-### Ligar
+### O ajuste que importa
 
-1. Descubra o IP do PC que vai ser o servidor (`ipconfig` no Windows).
-2. Em `src/config.js`, preencha:
+Em `src/config.js`:
 
 ```js
-export const LEADERBOARD_URL = 'http://192.168.0.10:3000';
+export const LEADERBOARD_URL = 'auto';
 ```
 
-3. `npm run build` de novo e distribua o `dist/` atualizado.
+| Valor    | O que faz                                                        |
+|----------|------------------------------------------------------------------|
+| `'auto'` | usa a **mesma origem** que serviu o jogo (padrão, recomendado)    |
+| `''`     | desliga: zero requisições de rede, jogo 100% offline              |
+| uma URL  | endereço fixo, ex.: `'http://192.168.0.10:3000'`                  |
 
-Com a constante vazia, o jogo **não faz uma única requisição de rede**. Com ela
-preenchida, toda chamada tem timeout de 3 s e `try/catch` silencioso: se o
-servidor cair no meio do evento, o jogo continua rodando e a tela de fim mostra
-"OFFLINE — PONTUAÇÃO SÓ NO LOCAL".
+Com `'auto'` você não precisa saber o IP da máquina nem gerar build nova
+quando ele mudar: o jogo aberto em `http://10.93.71.59:3000/` manda a
+pontuação para `http://10.93.71.59:3000/api/score` sozinho.
+
+> ### Cuidado com a porta
+>
+> A API do placar vive no **`server.js`, porta 3000**. O `npm run dev` sobe o
+> **Vite na porta 5173**, que não conhece `/api/score` e responde **404**.
+> Apontar `LEADERBOARD_URL` para a 5173 é o erro mais fácil de cometer — e
+> agora o próprio jogo avisa no console do navegador quando isso acontece.
+>
+> Para testar o placar durante o desenvolvimento, deixe os dois rodando: o
+> `vite.config.js` tem um proxy que encaminha `/api/*` do Vite para a 3000.
+
+### Como usar no evento
+
+1. Num PC, com `dist/`, `server.js` e `package.json` na mesma pasta:
+   `node server.js`. Ele imprime os endereços da rede — anote um.
+2. Nos outros PCs, abra `http://<esse-ip>:3000/`.
+3. No projetor, abra `http://<esse-ip>:3000/placar`.
 
 ### Endpoints
 
@@ -131,19 +151,33 @@ servidor cair no meio do evento, o jogo continua rodando e a tela de fim mostra
 | GET    | `/`                   | serve o `dist/` (o jogo)                      |
 | POST   | `/api/score`          | registra `{nickname, score, distance, maxCombo, stardust}` |
 | GET    | `/api/top?limit=10`   | melhor pontuação de cada apelido, ordenada    |
-| GET    | `/api/recent?limit=12`| últimas corridas, mais nova primeiro          |
+| GET    | `/api/recent?limit=14`| últimas corridas, mais nova primeiro          |
 | GET    | `/api/total`          | total de corridas registradas                 |
-| GET    | `/placar`             | página de ranking (atualiza a cada 3 s)       |
+| GET    | `/placar`             | página de ranking para o projetor             |
 
-Os dados ficam em `scores.json`, ao lado do `server.js`. É um JSON comum: dá
-para abrir, editar e apagar entre um evento e outro. Para zerar o ranking,
+Toda chamada do jogo tem timeout de 3 s e `try/catch`: se o servidor cair no
+meio do evento, o jogo continua rodando e a tela de fim mostra
+"OFFLINE — PONTUAÇÃO SÓ NO LOCAL".
+
+Os dados ficam em `scores.json`, ao lado do `server.js`. Para zerar o ranking,
 apague o arquivo e reinicie o servidor.
 
-### Página do telão
+### A tela do projetor
 
-`http://localhost:3000/placar` — mesmo tema neon do jogo, top 10 à esquerda,
-feed das últimas corridas à direita, e cada entrada nova pisca ao aparecer.
-Projete numa tela e deixe rodando.
+`http://<ip>:3000/placar` é **só placar**: não carrega o jogo, não tem link
+para ele e não responde a tecla nenhuma. Ninguém consegue começar uma partida
+por ali.
+
+- Top 10 dominando a tela, com o primeiro lugar em destaque e cada nome
+  acompanhado de distância, combo e poeiras.
+- Feed das últimas corridas na lateral.
+- Um marcador **AO VIVO** pisca a cada resposta do servidor e vira
+  **SEM CONEXÃO** quando as chamadas falham, junto com um "atualizado há X s".
+  Sem isso, uma lista parada é ambígua: ninguém jogou ou o servidor caiu?
+- Linha nova no top 10 entra piscando.
+- O rodapé mostra o endereço onde se joga, para quem estiver olhando o telão.
+
+A página recarrega os dados a cada 3 s — não precisa apertar F5.
 
 ---
 
@@ -201,6 +235,23 @@ quebra a build se alguém escrever um.
 A poeira estelar é distribuída **em cima da rota viável** que o validador
 devolveu. Seguir o brilho é, por construção, seguir o caminho que dá para
 passar.
+
+### Os três obstáculos
+
+Forma **e** cor dizem a ação, porque num mundo escuro e a 45 unidades por
+segundo não dá tempo de interpretar:
+
+| Obstáculo | Cor              | Forma                          | Ação      |
+|-----------|------------------|--------------------------------|-----------|
+| Pedra     | âmbar quente     | baixa e larga, com veios de magma | **pule**  |
+| Laser     | magenta          | feixes altos e finos entre postes | **deslize** |
+| Barreira  | listras vermelhas sobre claro | alta, maciça, fechando a pista | **desvie** |
+
+As três cores aparecem como legenda na tela de abertura, antes da primeira
+corrida. Os dois primeiros vieram de playtest: a pedra era cinza-arroxeada e
+sumia no espaço preto, e a barreira era um satélite flutuante que o pessoal
+tentava pular — agora ela vai do chão até acima da linha dos olhos e usa
+listras de cancela de obra.
 
 ### Power-ups
 
@@ -266,7 +317,7 @@ Quase tudo que dá para balancear está em `src/config.js`:
 | Constante                            | Para que serve                          |
 |--------------------------------------|-----------------------------------------|
 | `NOME_JOGO`                          | nome exibido em todas as telas          |
-| `LEADERBOARD_URL`                    | placar em rede (vazio = offline total)  |
+| `LEADERBOARD_URL`                    | `'auto'`, vazio (offline) ou URL fixa   |
 | `RESOLUCOES` / `RESOLUCAO_PADRAO`    | degraus de resolução interna            |
 | `LARGURA_PISTA`, `PISTAS`            | geometria das três pistas               |
 | `CAMERA`, `FOG`                      | enquadramento e alcance de visão        |
@@ -382,9 +433,17 @@ rodando come mais GPU que o jogo inteiro.
 primeiro input. Aperte qualquer tecla. Se continuar mudo, confira o `M` e o
 volume em Configurações.
 
-**O placar não recebe nada** — confirme que `LEADERBOARD_URL` foi preenchida
-**antes** do `npm run build`, que o IP está certo e que o firewall do Windows
-liberou a porta 3000 na rede privada.
+**O placar não recebe nada** — abra o console do navegador (F12) na hora de
+morrer: o jogo diz o que aconteceu. Um **404** quase sempre significa que
+`LEADERBOARD_URL` aponta para a porta do Vite (5173) em vez da do `server.js`
+(3000) — com `'auto'` isso não acontece. Se o erro for de rede, confira se o
+`server.js` está rodando e se o firewall do Windows liberou a porta 3000 na
+rede privada.
+
+**A tela do projetor não atualiza** — olhe o marcador no topo. **AO VIVO** com
+a lista vazia significa que o servidor está respondendo e ninguém pontuou
+ainda (normalmente o jogo é que não está conseguindo enviar: veja o item
+acima). **SEM CONEXÃO** significa que o `server.js` caiu ou a rede mudou.
 
 **A tela pisca ao trocar de janela** — o jogo pausa sozinho em
 `visibilitychange` e ao perder o foco. Aperte `P` para voltar.

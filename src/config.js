@@ -8,10 +8,18 @@ export const NOME_JOGO = 'STARDUST RUNNER';
 
 /**
  * Placar em rede local (opcional, DESLIGADO por padrao).
- * Vazio  = zero requisicoes de rede, jogo 100% offline.
- * Exemplo: 'http://192.168.0.10:3000'
+ *
+ *   ''      -> zero requisicoes de rede, jogo 100% offline (padrao)
+ *   'auto'  -> usa a MESMA origem que serviu o jogo. E a opcao recomendada
+ *              quando o jogo e servido pelo server.js: funciona em qualquer
+ *              IP e qualquer porta, sem precisar rebuildar o dist/
+ *   url     -> endereco fixo, ex.: 'http://192.168.0.10:3000'
+ *
+ * ATENCAO a porta: a API do placar vive no server.js (porta 3000 por padrao),
+ * NAO no servidor de desenvolvimento do Vite (5173). Apontar para a 5173 da
+ * 404 em /api/score, porque o Vite nao conhece essa rota.
  */
-export const LEADERBOARD_URL = '';
+export const LEADERBOARD_URL = 'auto';
 
 /** Tempo maximo (ms) que uma chamada ao placar pode demorar antes de desistir. */
 export const LEADERBOARD_TIMEOUT = 3000;
@@ -24,6 +32,9 @@ export const CORES = {
   espacoMedio: 0x060a1c,
   espacoAlto: 0x0a0f2a,
   ciano: 0x22e6ff,
+  // Tom intermediario: as divisorias de pista com o ciano escuro sumiam
+  // contra o chao, e o conjunto ficava apagado demais no projetor.
+  cianoMedio: 0x1fb4d6,
   cianoEscuro: 0x0d6f85,
   magenta: 0xff2f87,
   dourado: 0xffd23f,

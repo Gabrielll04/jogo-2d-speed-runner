@@ -41,7 +41,7 @@ class Planeta {
     const halo = new THREE.Sprite(new THREE.SpriteMaterial({
       map: texturaHalo(corDaReceita(this.receita), 0.55),
       transparent: true,
-      opacity: 0.18,
+      opacity: 0.32,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
       fog: false

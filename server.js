@@ -1,8 +1,8 @@
 /* ==========================================================================
    STARDUST RUNNER - servidor de evento
 
-   Node puro: http, fs, path. ZERO dependencia de npm - da pra levar num
-   pendrive e rodar em qualquer maquina com Node instalado, sem internet.
+   Node puro (http, fs, path, os, url). ZERO dependencia de npm - da pra levar
+   num pendrive e rodar em qualquer maquina com Node instalado, sem internet.
 
      node server.js            -> porta 3000
      PORT=8080 node server.js  -> outra porta
@@ -21,6 +21,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const PORTA = Number(process.env.PORT) || 3000;
@@ -255,27 +256,38 @@ function ultimos(limite) {
 
 /* ==========================================================================
    Pagina do placar (mesmo tema do jogo)
+
+   Esta tela e SO PLACAR: vai no projetor, ninguem joga nela. Por isso ela
+   nao carrega o jogo, nao tem link para ele e nao responde a tecla nenhuma -
+   so mostra o ranking, bem grande, para ser lido do fundo da sala.
+
+   O marcador "AO VIVO" pisca a cada resposta do servidor e vira "SEM
+   CONEXAO" quando as chamadas falham: de longe da pra saber se a tela esta
+   viva ou congelada, que era o problema de olhar uma lista parada e nao
+   saber se ninguem jogou ou se o servidor caiu.
    ========================================================================== */
 const PAGINA_PLACAR = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>PLACAR - STARDUST RUNNER</title>
+<title>PLACAR AO VIVO - STARDUST RUNNER</title>
 <style>
   :root {
-    --espaco-0:#02030a; --espaco-2:#0a0f2a; --ciano:#22e6ff;
-    --magenta:#ff2f87; --dourado:#ffd23f; --texto:#e8f4ff; --fraco:#6d84a8;
+    --espaco-0:#02030a; --ciano:#22e6ff; --magenta:#ff2f87;
+    --dourado:#ffd23f; --texto:#e8f4ff; --fraco:#6d84a8;
     --fonte: ui-monospace, "Cascadia Mono", Consolas, monospace;
   }
   * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { height:100%; }
   body {
-    min-height:100vh; background:var(--espaco-0); color:var(--texto);
-    font-family:var(--fonte); padding:3vh 3vw; overflow-x:hidden;
+    background:var(--espaco-0); color:var(--texto); font-family:var(--fonte);
+    padding:2.6vh 2.4vw; overflow:hidden;
+    display:flex; flex-direction:column; gap:2vh;
   }
   /* Campo de estrelas em CSS puro: gradientes repetidos, custo zero. */
   body::before {
-    content:""; position:fixed; inset:0; z-index:-2; opacity:.5;
+    content:""; position:fixed; inset:0; z-index:-2; opacity:.55;
     background-image:
       radial-gradient(1px 1px at 20% 30%, #fff, transparent),
       radial-gradient(1px 1px at 70% 60%, #cfe4ff, transparent),
@@ -284,79 +296,155 @@ const PAGINA_PLACAR = `<!DOCTYPE html>
       radial-gradient(1px 1px at 10% 70%, #ffd8ec, transparent);
     background-size: 340px 340px, 420px 420px, 260px 260px, 520px 520px, 300px 300px;
   }
+  /* Brilho de horizonte, o mesmo motivo do jogo. */
   body::after {
-    content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
-    background:repeating-linear-gradient(to bottom,
-      rgba(0,0,0,.20) 0px, rgba(0,0,0,.20) 1px,
-      rgba(255,255,255,.02) 1px, rgba(255,255,255,.02) 3px);
-    mix-blend-mode:multiply;
+    content:""; position:fixed; left:-10vw; right:-10vw; bottom:-22vh; height:46vh;
+    z-index:-2; pointer-events:none;
+    background:radial-gradient(60% 100% at 50% 100%,
+      rgba(34,230,255,.16), rgba(255,47,135,.07) 45%, transparent 72%);
   }
-  header { display:flex; align-items:flex-end; gap:1.4rem; margin-bottom:2.4vh; flex-wrap:wrap; }
+
+  /* ---------- cabecalho ---------- */
+  header { display:flex; align-items:center; gap:1.6vw; flex-wrap:wrap; }
   h1 {
-    font-size:clamp(28px, 5vw, 62px); letter-spacing:.14em; font-weight:700;
+    font-size:clamp(26px, 3.4vw, 54px); letter-spacing:.12em; line-height:1;
     text-shadow: 2px 0 0 var(--magenta), -2px 0 0 var(--ciano);
   }
-  h1 small { display:block; font-size:.32em; letter-spacing:.42em; color:var(--ciano); text-shadow:none; }
-  .estado { margin-left:auto; font-size:clamp(11px,1.2vw,15px); letter-spacing:.2em; color:var(--fraco); }
-  .estado b { color:var(--ciano); font-weight:400; }
-  .colunas { display:grid; grid-template-columns: 1.6fr 1fr; gap:2vw; align-items:start; }
-  @media (max-aspect-ratio:1/1) { .colunas { grid-template-columns:1fr; } }
+  h1 small {
+    display:block; font-size:.3em; letter-spacing:.42em; color:var(--ciano);
+    text-shadow:none; margin-top:.5em;
+  }
+  .vivo {
+    display:flex; align-items:center; gap:.6em;
+    font-size:clamp(11px,1.1vw,16px); letter-spacing:.24em; color:var(--ciano);
+    border:1px solid rgba(34,230,255,.45); padding:.5em 1em;
+  }
+  .vivo .bolha {
+    width:.7em; height:.7em; background:var(--ciano);
+    animation:pulsa 1.6s steps(2,end) infinite;
+  }
+  @keyframes pulsa { 0%,55%{opacity:1} 56%,100%{opacity:.15} }
+  body.offline .vivo { color:var(--magenta); border-color:rgba(255,47,135,.55); }
+  body.offline .vivo .bolha { background:var(--magenta); }
+  .contagem {
+    margin-left:auto; text-align:right;
+    font-size:clamp(11px,1.1vw,15px); letter-spacing:.2em; color:var(--fraco);
+  }
+  .contagem b { color:var(--texto); font-weight:400; font-size:1.5em; }
+
+  /* ---------- colunas ---------- */
+  .colunas {
+    flex:1; min-height:0;
+    display:grid; grid-template-columns: 2.5fr 1fr; gap:1.6vw;
+  }
   .painel {
-    border:1px solid rgba(34,230,255,.4);
-    background:linear-gradient(180deg, rgba(10,15,42,.92), rgba(2,3,10,.94));
-    clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
-    padding:2.2vh 1.6vw;
+    min-height:0; display:flex; flex-direction:column;
+    border:1px solid rgba(34,230,255,.34);
+    background:linear-gradient(180deg, rgba(10,15,42,.9), rgba(2,3,10,.94));
+    clip-path: polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px);
+    padding:1.8vh 1.4vw;
   }
   .painel h2 {
-    font-size:clamp(13px,1.5vw,19px); letter-spacing:.3em; color:var(--dourado);
-    font-weight:700; margin-bottom:1.6vh;
+    font-size:clamp(12px,1.2vw,18px); letter-spacing:.34em; color:var(--dourado);
+    margin-bottom:1.2vh; flex:none;
   }
-  ol { list-style:none; display:grid; gap:.5vh; }
-  li {
-    display:grid; grid-template-columns:2.6em 1fr auto auto; gap:1em; align-items:baseline;
-    padding:.5vh .6vw; font-size:clamp(13px,1.9vw,26px);
+  ol { list-style:none; flex:1; min-height:0; display:flex; flex-direction:column; gap:.4vh; }
+
+  /* ---------- linhas do top ---------- */
+  .top li {
+    flex:1; min-height:0;
+    display:grid; grid-template-columns:2.2em 1fr auto; gap:1vw;
+    align-items:center; padding:0 .6vw;
+    font-size:clamp(14px, 2.4vh, 34px);
+    border-left:.28em solid transparent;
   }
-  li .pos { color:var(--fraco); }
-  li .nome { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; letter-spacing:.06em; }
-  li .dist { color:var(--fraco); font-size:.62em; letter-spacing:.14em; }
-  li .pts { color:var(--dourado); font-variant-numeric:tabular-nums; }
-  li.p1 { background:linear-gradient(90deg, rgba(255,210,63,.16), transparent); }
-  li.p1 .pos, li.p1 .nome { color:var(--dourado); }
-  li.p2 .pos, li.p2 .nome { color:var(--ciano); }
-  li.p3 .pos, li.p3 .nome { color:var(--magenta); }
-  li.novo { animation: entra .6s steps(5,end); }
-  @keyframes entra {
-    from { background:rgba(34,230,255,.35); transform:translateX(-6px); }
-    to { background:transparent; transform:none; }
+  .top .pos { color:var(--fraco); font-variant-numeric:tabular-nums; }
+  .top .quem { min-width:0; }
+  .top .nome {
+    display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    letter-spacing:.08em;
   }
-  .feed li { grid-template-columns:1fr auto; font-size:clamp(11px,1.3vw,17px); }
-  .feed .hora { color:var(--fraco); font-size:.8em; }
-  .vazio { color:var(--fraco); font-size:clamp(12px,1.4vw,18px); letter-spacing:.14em; }
-  footer { margin-top:2.4vh; color:var(--fraco); font-size:clamp(10px,1.1vw,14px); letter-spacing:.2em; }
+  .top .detalhe {
+    display:block; font-size:.5em; letter-spacing:.18em; color:var(--fraco); margin-top:.2em;
+  }
+  .top .pts {
+    font-variant-numeric:tabular-nums; color:var(--dourado); letter-spacing:.04em;
+  }
+  .top li.p1 {
+    border-left-color:var(--dourado);
+    background:linear-gradient(90deg, rgba(255,210,63,.14), transparent 70%);
+    font-size:clamp(18px, 3.4vh, 46px);
+  }
+  .top li.p1 .pos, .top li.p1 .nome { color:var(--dourado); }
+  .top li.p2 { border-left-color:var(--ciano); }
+  .top li.p2 .pos, .top li.p2 .nome { color:var(--ciano); }
+  .top li.p3 { border-left-color:var(--magenta); }
+  .top li.p3 .pos, .top li.p3 .nome { color:var(--magenta); }
+  .top li.novo { animation: chega .9s steps(6,end); }
+  @keyframes chega {
+    0% { background:rgba(34,230,255,.4); transform:translateX(-.5em); }
+    100% { background:transparent; transform:none; }
+  }
+
+  /* ---------- feed ---------- */
+  .feed li {
+    display:grid; grid-template-columns:1fr auto; gap:.6em; align-items:baseline;
+    font-size:clamp(11px, 1.6vh, 20px); padding:.25vh 0;
+    border-bottom:1px solid rgba(34,230,255,.08);
+  }
+  .feed .nome { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; letter-spacing:.06em; }
+  .feed .pts { color:var(--dourado); font-variant-numeric:tabular-nums; }
+  .feed li:first-child .nome { color:var(--ciano); }
+
+  .aviso {
+    flex:1; display:flex; flex-direction:column; justify-content:center; gap:1.2vh;
+    color:var(--fraco); font-size:clamp(12px,1.5vh,20px); letter-spacing:.14em;
+    line-height:1.7; text-align:center;
+  }
+  .aviso b { color:var(--ciano); font-weight:400; letter-spacing:.2em; }
+
+  footer {
+    flex:none; display:flex; gap:1.4vw; align-items:center; flex-wrap:wrap;
+    color:var(--fraco); font-size:clamp(10px,1.05vw,15px); letter-spacing:.2em;
+  }
+  footer .onde { color:var(--texto); }
+  footer .selo { color:var(--magenta); border:1px solid rgba(255,47,135,.4); padding:.3em .9em; }
 </style>
 </head>
 <body>
   <header>
-    <h1>PLACAR<small>STARDUST RUNNER</small></h1>
-    <div class="estado">ATUALIZA A CADA 3 S &middot; <b id="total">0</b> CORRIDAS</div>
+    <h1>PLACAR AO VIVO<small>STARDUST RUNNER</small></h1>
+    <div class="vivo"><i class="bolha"></i><span id="estado">CONECTANDO</span></div>
+    <div class="contagem"><b id="total">0</b><br />CORRIDAS</div>
   </header>
 
   <div class="colunas">
     <section class="painel">
-      <h2>TOP 10</h2>
-      <ol id="top"><li class="vazio">AGUARDANDO OS PRIMEIROS CORREDORES...</li></ol>
+      <h2>MELHORES DA REDE</h2>
+      <ol id="top" class="top"></ol>
+      <div id="top-vazio" class="aviso">
+        NINGUEM CORREU AINDA.<br />
+        ABRA O JOGO NOS COMPUTADORES EM <b>__ENDERECO__</b>
+      </div>
     </section>
+
     <section class="painel">
-      <h2>ULTIMAS CORRIDAS</h2>
-      <ol id="feed" class="feed"><li class="vazio">NADA AINDA.</li></ol>
+      <h2>ULTIMAS</h2>
+      <ol id="feed" class="feed"></ol>
+      <div id="feed-vazio" class="aviso">AGUARDANDO A PRIMEIRA CORRIDA.</div>
     </section>
   </div>
 
-  <footer>SERVIDOR LOCAL &middot; SEM INTERNET &middot; DADOS EM scores.json</footer>
+  <footer>
+    <span class="selo">TELA DE ACOMPANHAMENTO</span>
+    <span>AQUI NAO SE JOGA &middot; PARA JOGAR, ABRA <span class="onde">__ENDERECO__</span></span>
+    <span style="margin-left:auto">ATUALIZADO <b id="ha">AGORA</b></span>
+  </footer>
 
 <script>
   var vistos = Object.create(null);
   var primeiraCarga = true;
+  var ultimoOk = Date.now();
 
   function texto(pai, classe, valor) {
     var s = document.createElement('span');
@@ -371,26 +459,29 @@ const PAGINA_PLACAR = `<!DOCTYPE html>
     return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
   }
 
-  function vazio(ol, mensagem) {
-    var li = document.createElement('li');
-    li.className = 'vazio';
-    li.textContent = mensagem;
-    ol.appendChild(li);
+  function mostrar(id, visivel) {
+    document.getElementById(id).style.display = visivel ? '' : 'none';
   }
 
   function desenharTop(lista) {
     var ol = document.getElementById('top');
+    mostrar('top-vazio', lista.length === 0);
+    ol.style.display = lista.length === 0 ? 'none' : '';
     ol.textContent = '';
-    if (!lista.length) { vazio(ol, 'AGUARDANDO OS PRIMEIROS CORREDORES...'); return; }
     lista.forEach(function (r, i) {
       var li = document.createElement('li');
       li.className = 'p' + (i + 1);
       var chave = r.nickname + ':' + r.score;
       if (!primeiraCarga && !vistos[chave]) li.className += ' novo';
       vistos[chave] = true;
+
       texto(li, 'pos', String(i + 1).padStart(2, '0'));
-      texto(li, 'nome', r.nickname);
-      texto(li, 'dist', r.distance + ' M  x' + r.maxCombo);
+      var quem = document.createElement('span');
+      quem.className = 'quem';
+      texto(quem, 'nome', r.nickname);
+      texto(quem, 'detalhe', r.distance + ' METROS   COMBO x' + r.maxCombo +
+        '   ' + r.stardust + ' POEIRAS');
+      li.appendChild(quem);
       texto(li, 'pts', Number(r.score).toLocaleString('pt-BR'));
       ol.appendChild(li);
     });
@@ -398,36 +489,70 @@ const PAGINA_PLACAR = `<!DOCTYPE html>
 
   function desenharFeed(lista) {
     var ol = document.getElementById('feed');
+    mostrar('feed-vazio', lista.length === 0);
+    ol.style.display = lista.length === 0 ? 'none' : '';
     ol.textContent = '';
-    if (!lista.length) { vazio(ol, 'NADA AINDA.'); return; }
     lista.forEach(function (r) {
       var li = document.createElement('li');
-      texto(li, 'nome', r.nickname + '  ' + Number(r.score).toLocaleString('pt-BR'));
-      texto(li, 'hora', hora(r.at));
+      var esq = document.createElement('span');
+      esq.className = 'nome';
+      esq.textContent = r.nickname;
+      li.appendChild(esq);
+      var dir = document.createElement('span');
+      dir.className = 'pts';
+      dir.textContent = Number(r.score).toLocaleString('pt-BR') + '  ' + hora(r.at);
+      li.appendChild(dir);
       ol.appendChild(li);
     });
   }
 
+  function marcarOnline(ok) {
+    document.body.classList.toggle('offline', !ok);
+    document.getElementById('estado').textContent = ok ? 'AO VIVO' : 'SEM CONEXAO';
+    if (ok) ultimoOk = Date.now();
+  }
+
   function atualizar() {
     Promise.all([
-      fetch('/api/top?limit=10').then(function (r) { return r.json(); }),
-      fetch('/api/recent?limit=12').then(function (r) { return r.json(); })
+      fetch('/api/top?limit=10', { cache: 'no-store' }).then(function (r) { return r.json(); }),
+      fetch('/api/recent?limit=14', { cache: 'no-store' }).then(function (r) { return r.json(); }),
+      fetch('/api/total', { cache: 'no-store' }).then(function (r) { return r.json(); })
     ]).then(function (res) {
       desenharTop(res[0] || []);
       desenharFeed(res[1] || []);
+      document.getElementById('total').textContent = (res[2] || {}).total || 0;
+      marcarOnline(true);
       primeiraCarga = false;
-    }).catch(function () { /* servidor reiniciando: tenta de novo em 3 s */ });
+    }).catch(function () {
+      marcarOnline(false);
+    });
+  }
 
-    fetch('/api/total').then(function (r) { return r.json(); }).then(function (d) {
-      document.getElementById('total').textContent = d.total;
-    }).catch(function () {});
+  // O contador de "atualizado ha X" corre sozinho: numa lista sem novidade,
+  // e ele que mostra que a tela nao travou.
+  function tique() {
+    var s = Math.round((Date.now() - ultimoOk) / 1000);
+    document.getElementById('ha').textContent =
+      s < 2 ? 'AGORA' : ('HA ' + s + ' S');
   }
 
   atualizar();
   setInterval(atualizar, 3000);
+  setInterval(tique, 1000);
 </script>
 </body>
 </html>`;
+
+/**
+ * Monta a pagina com o endereco que o proprio visitante usou para chegar
+ * aqui. Assim a instrucao "abra o jogo em ..." mostra o IP da rede quando a
+ * tela e aberta pela rede, e localhost quando e na propria maquina.
+ */
+function paginaPlacar(req) {
+  const host = (req.headers && req.headers.host) || ('localhost:' + PORTA);
+  const endereco = 'http://' + host + '/';
+  return PAGINA_PLACAR.split('__ENDERECO__').join(endereco);
+}
 
 /* ==========================================================================
    Servidor
@@ -472,7 +597,7 @@ const servidor = http.createServer((req, res) => {
   }
 
   if (req.method === 'GET' && (caminho === '/placar' || caminho === '/placar/')) {
-    responderTexto(res, 200, PAGINA_PLACAR, 'text/html; charset=utf-8');
+    responderTexto(res, 200, paginaPlacar(req), 'text/html; charset=utf-8');
     return;
   }
 
@@ -484,13 +609,36 @@ const servidor = http.createServer((req, res) => {
   responderTexto(res, 405, 'Metodo nao suportado.');
 });
 
+/** IPv4 das placas de rede de verdade (sem loopback, sem interface virtual). */
+function enderecosDaRede() {
+  const saida = [];
+  const interfaces = os.networkInterfaces();
+  for (const nome of Object.keys(interfaces)) {
+    for (const info of interfaces[nome] || []) {
+      if (info.family === 'IPv4' && !info.internal) saida.push(info.address);
+    }
+  }
+  return saida;
+}
+
 servidor.listen(PORTA, () => {
+  const ips = enderecosDaRede();
   console.log('');
   console.log('  STARDUST RUNNER - servidor local');
   console.log('  --------------------------------');
   console.log('  jogo:   http://localhost:' + PORTA + '/');
   console.log('  placar: http://localhost:' + PORTA + '/placar');
-  console.log('  rede:   http://SEU-IP-LOCAL:' + PORTA + '/   (outros PCs e celulares)');
+  if (ips.length) {
+    console.log('');
+    console.log('  Nos outros PCs e celulares da rede, use um destes:');
+    for (const ip of ips) console.log('    http://' + ip + ':' + PORTA + '/');
+    console.log('');
+    console.log('  Com LEADERBOARD_URL = \'auto\' no config.js, o jogo aberto por');
+    console.log('  esses enderecos ja manda a pontuacao para ca - sem IP fixo.');
+  } else {
+    console.log('  (nenhuma placa de rede ativa: so da pra jogar nesta maquina)');
+  }
+  console.log('');
   console.log('  dados:  ' + ARQUIVO_SCORES);
   console.log('');
   if (!fs.existsSync(PASTA_DIST)) {

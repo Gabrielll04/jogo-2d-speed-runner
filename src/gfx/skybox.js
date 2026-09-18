@@ -59,10 +59,10 @@ export class FundoEspacial {
     cena.add(this.grupo);
 
     // Camada distante: muitas estrelas pequenas, quase paradas.
-    this.camadaLonge = criarCamada(420, 1.6, 1234, 320, 0.85);
+    this.camadaLonge = criarCamada(460, 2.0, 1234, 320, 0.95);
     this.camadaLonge.pontos.renderOrder = -10;
     // Camada proxima: menos estrelas, maiores e mais rapidas.
-    this.camadaPerto = criarCamada(160, 3.0, 9876, 220, 1.0);
+    this.camadaPerto = criarCamada(170, 3.6, 9876, 220, 1.0);
     this.camadaPerto.pontos.renderOrder = -9;
 
     this.grupo.add(this.camadaLonge.pontos);
@@ -77,11 +77,13 @@ export class FundoEspacial {
 
   criarNebulosas() {
     const rng = criarRng(777);
+    // Mais saturadas que a primeira versao: como pano de fundo elas somem
+    // rapido, e o que sobrava era um cinza-azulado sem graca.
     const paletas = [
-      [CORES.nebulaA, 0x2a4fa0],
-      [CORES.nebulaB, 0x7a2f8f],
-      [CORES.nebulaC, 0x8f2f5a],
-      [0x123a5e, CORES.nebulaA]
+      [0x2f4fd0, 0x4a7bff],
+      [CORES.nebulaB, 0xa64fd0],
+      [0xb03a6a, 0xff5f9a],
+      [0x1c5fa0, 0x3fa8ff]
     ];
     this.nebulosas = [];
     for (let i = 0; i < 5; i++) {
@@ -89,7 +91,7 @@ export class FundoEspacial {
       const mat = new THREE.SpriteMaterial({
         map: tex,
         transparent: true,
-        opacity: entre(rng, 0.42, 0.7),
+        opacity: entre(rng, 0.62, 0.95),
         depthWrite: false,
         depthTest: false,
         blending: THREE.AdditiveBlending,
