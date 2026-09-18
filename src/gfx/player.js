@@ -87,16 +87,16 @@ export class Jogador {
     this.corpo.add(this.propulsor);
 
     /* ---------- bolha de escudo ---------- */
-    // Octaedro em vez de icosaedro: 12 arestas em vez de 30. A bolha fica
-    // legivel com 180 linhas de resolucao e nao esconde o jogador.
+    // Casca translucida aditiva: em 320x180 ela vira um halo esferico limpo
+    // ao redor do jogador. Wireframe aqui viraria uma gaiola ilegivel.
     this.escudo = new THREE.Mesh(
-      new THREE.OctahedronGeometry(1.2, 0),
+      new THREE.SphereGeometry(1.15, 10, 7),
       new THREE.MeshBasicMaterial({
         color: CORES.ciano,
-        wireframe: true,
         transparent: true,
-        opacity: 0.6,
+        opacity: 0.16,
         depthWrite: false,
+        side: THREE.DoubleSide,
         blending: THREE.AdditiveBlending
       })
     );
@@ -273,7 +273,8 @@ export class Jogador {
     if (this.escudo.visible) {
       this.escudo.rotation.y += dt * 1.1;
       this.escudo.rotation.x += dt * 0.5;
-      this.escudo.material.opacity = 0.35 + Math.sin(this.tempo * 5) * 0.12 + pulsoAudio * 0.2;
+      this.escudo.material.opacity = 0.13 + Math.sin(this.tempo * 5) * 0.05 + pulsoAudio * 0.09;
+      this.escudo.scale.setScalar(1 + pulsoAudio * 0.06);
       this.escudo.position.y = 0.82 + (this.deslizando ? -0.25 : 0);
     }
   }
