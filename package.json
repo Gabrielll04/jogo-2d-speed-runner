@@ -1,0 +1,22 @@
+{
+  "name": "stardust-runner",
+  "private": true,
+  "version": "1.0.0",
+  "description": "STARDUST RUNNER - endless runner 3D pixelado com tema de galaxia. 100% procedural, offline.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "serve": "node server.js",
+    "test:padroes": "node src/game/patterns.test.js",
+    "test:hitbox": "node src/game/hitbox.test.js",
+    "test": "npm run test:padroes && npm run test:hitbox"
+  },
+  "dependencies": {
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.10"
+  }
+}
