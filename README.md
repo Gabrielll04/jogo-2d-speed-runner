@@ -173,20 +173,29 @@ apague o arquivo e reinicie o servidor.
 
 ### A tela do projetor
 
-`http://<ip>:3000/placar` é **só placar**: não carrega o jogo, não tem link
-para ele e não responde a tecla nenhuma. Ninguém consegue começar uma partida
-por ali.
+Um **quadro de recordes de fliperama**: não carrega o jogo, não tem link para
+ele e não escuta teclado. Ninguém consegue começar uma partida por ali.
 
 - Top 10 dominando a tela, com o primeiro lugar em destaque e cada nome
   acompanhado de distância, combo e poeiras.
 - Feed das últimas corridas na lateral.
-- Um marcador **AO VIVO** pisca a cada resposta do servidor e vira
-  **SEM CONEXÃO** quando as chamadas falham, junto com um "atualizado há X s".
-  Sem isso, uma lista parada é ambígua: ninguém jogou ou o servidor caiu?
 - Linha nova no top 10 entra piscando.
-- O rodapé mostra o endereço onde se joga, para quem estiver olhando o telão.
+- Scanlines e vinheta por cima de tudo: o mesmo tubo do jogo.
 
-A página recarrega os dados a cada 3 s — não precisa apertar F5.
+Recarrega os dados a cada 3 s — não precisa apertar F5. Se a rede falhar, a
+página **mantém o último placar desenhado** e tenta de novo no ciclo seguinte,
+em vez de piscar uma tela vazia no meio do evento.
+
+Ela existe em dois lugares, para o caso de o `dist/` ser servido por outra
+coisa que não o `server.js`:
+
+| Como o jogo está sendo servido | Quem desenha o placar |
+|---|---|
+| `node server.js` | a rota `/placar` do próprio servidor (HTML pronto) |
+| Vite (`npm run dev`), `npm run preview` ou qualquer estático | `src/placar.js`, que assume a página quando a URL termina em `/placar` |
+
+Nos dois casos os dados vêm da mesma API. No modo Vite, o proxy de `/api`
+encaminha para o `server.js` na porta 3000.
 
 ---
 
@@ -436,6 +445,7 @@ src/
     collision.js        AABB manual e detecção de raspada
     score.js            pontuação e combo
     bot.js              o piloto do attract mode
+  placar.js           quadro de recordes quando a URL termina em /placar
   ui/
     hud.js              HUD (escreve no DOM só quando o valor muda)
     screens.js          attract, apelido, pausa, fim, configurações
@@ -511,10 +521,11 @@ morrer: o jogo diz o que aconteceu. Um **404** quase sempre significa que
 `server.js` está rodando e se o firewall do Windows liberou a porta 3000 na
 rede privada.
 
-**A tela do projetor não atualiza** — olhe o marcador no topo. **AO VIVO** com
-a lista vazia significa que o servidor está respondendo e ninguém pontuou
-ainda (normalmente o jogo é que não está conseguindo enviar: veja o item
-acima). **SEM CONEXÃO** significa que o `server.js` caiu ou a rede mudou.
+**A tela do projetor não atualiza** — ela guarda o último placar quando a rede
+falha, então uma lista parada pode ser tanto "ninguém pontuou" quanto "perdi o
+servidor". Para separar os dois casos, abra `http://<ip>:3000/api/total` no
+navegador: se responder, o servidor está de pé e o problema é o jogo não estar
+conseguindo enviar (veja o item acima).
 
 **A tela pisca ao trocar de janela** — o jogo pausa sozinho em
 `visibilitychange` e ao perder o foco. Aperte `P` para voltar.
