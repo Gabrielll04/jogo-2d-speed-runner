@@ -16,6 +16,7 @@ import { Jogo, ESTADO } from './game/game.js';
 import { Hud } from './ui/hud.js';
 import { Telas } from './ui/screens.js';
 import { enviarPontuacao, buscarTop, placarLigado } from './ui/leaderboard.js';
+import { ehRotaPlacar, iniciarPlacar } from './placar.js';
 
 /* Fases da interface (o jogo tem o estado dele, isto aqui e o fluxo de telas) */
 const FASE = {
@@ -442,14 +443,20 @@ class Aplicacao {
 }
 
 /* ========================================================================== */
-const app = new Aplicacao();
-app.iniciar();
+/* Rota /placar no frontend (dev, preview ou estatico sem o server.js):
+   mostra o quadro de recordes em vez do jogo. O jogo segue igual. */
+if (ehRotaPlacar()) {
+  iniciarPlacar();
+} else {
+  const app = new Aplicacao();
+  app.iniciar();
 
-// Atalho de depuracao para os testes na escola: window.stardust.fps()
-window.stardust = {
-  versao: '1.0.0',
-  jogo: () => app.jogo,
-  fps: () => app.governador.fps,
-  resolucoes: RESOLUCOES,
-  combos: PONTOS.degrausCombo
-};
+  // Atalho de depuracao para os testes na escola: window.stardust.fps()
+  window.stardust = {
+    versao: '1.0.0',
+    jogo: () => app.jogo,
+    fps: () => app.governador.fps,
+    resolucoes: RESOLUCOES,
+    combos: PONTOS.degrausCombo
+  };
+}

@@ -261,17 +261,17 @@ function ultimos(limite) {
    nao carrega o jogo, nao tem link para ele e nao responde a tecla nenhuma -
    so mostra o ranking, bem grande, para ser lido do fundo da sala.
 
-   O marcador "AO VIVO" pisca a cada resposta do servidor e vira "SEM
-   CONEXAO" quando as chamadas falham: de longe da pra saber se a tela esta
-   viva ou congelada, que era o problema de olhar uma lista parada e nao
-   saber se ninguem jogou ou se o servidor caiu.
+   Visual de quadro de recordes de fliperama, com o mesmo tubo do jogo
+   (scanlines + vinheta): sem selo de acompanhamento, sem endereco de onde
+   jogar e sem contador de atualizado. Se a rede falhar, a pagina mantem o
+   ultimo placar desenhado e tenta de novo em 3 s.
    ========================================================================== */
 const PAGINA_PLACAR = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>PLACAR AO VIVO - STARDUST RUNNER</title>
+<title>PLACAR - STARDUST RUNNER</title>
 <style>
   :root {
     --espaco-0:#02030a; --ciano:#22e6ff; --magenta:#ff2f87;
@@ -314,18 +314,22 @@ const PAGINA_PLACAR = `<!DOCTYPE html>
     display:block; font-size:.3em; letter-spacing:.42em; color:var(--ciano);
     text-shadow:none; margin-top:.5em;
   }
-  .vivo {
-    display:flex; align-items:center; gap:.6em;
-    font-size:clamp(11px,1.1vw,16px); letter-spacing:.24em; color:var(--ciano);
-    border:1px solid rgba(34,230,255,.45); padding:.5em 1em;
+  /* Scanlines + vinheta: o mesmo tubo do jogo, por cima de tudo. */
+  html::before {
+    content:""; position:fixed; inset:0; z-index:60; pointer-events:none;
+    background:repeating-linear-gradient(
+      to bottom,
+      rgba(0,0,0,.22) 0px,
+      rgba(0,0,0,.22) 1px,
+      rgba(255,255,255,.02) 1px,
+      rgba(255,255,255,.02) 3px
+    );
+    opacity:.5;
   }
-  .vivo .bolha {
-    width:.7em; height:.7em; background:var(--ciano);
-    animation:pulsa 1.6s steps(2,end) infinite;
+  html::after {
+    content:""; position:fixed; inset:0; z-index:61; pointer-events:none;
+    box-shadow:inset 0 0 18vmin rgba(2,3,10,.9);
   }
-  @keyframes pulsa { 0%,55%{opacity:1} 56%,100%{opacity:.15} }
-  body.offline .vivo { color:var(--magenta); border-color:rgba(255,47,135,.55); }
-  body.offline .vivo .bolha { background:var(--magenta); }
   .contagem {
     margin-left:auto; text-align:right;
     font-size:clamp(11px,1.1vw,15px); letter-spacing:.2em; color:var(--fraco);
@@ -403,18 +407,20 @@ const PAGINA_PLACAR = `<!DOCTYPE html>
   }
   .aviso b { color:var(--ciano); font-weight:400; letter-spacing:.2em; }
 
-  footer {
-    flex:none; display:flex; gap:1.4vw; align-items:center; flex-wrap:wrap;
-    color:var(--fraco); font-size:clamp(10px,1.05vw,15px); letter-spacing:.2em;
+  .rodape {
+    flex:none; display:flex; gap:1vw; align-items:center; justify-content:center;
+    color:var(--fraco); font-size:clamp(10px,1.05vw,15px); letter-spacing:.34em;
   }
-  footer .onde { color:var(--texto); }
-  footer .selo { color:var(--magenta); border:1px solid rgba(255,47,135,.4); padding:.3em .9em; }
+  .rodape .pisca {
+    color:var(--dourado);
+    animation:piscar 1.2s steps(2,end) infinite;
+  }
+  @keyframes piscar { 0%,60%{opacity:1} 61%,100%{opacity:.2} }
 </style>
 </head>
 <body>
   <header>
-    <h1>PLACAR AO VIVO<small>STARDUST RUNNER</small></h1>
-    <div class="vivo"><i class="bolha"></i><span id="estado">CONECTANDO</span></div>
+    <h1>STARDUST RUNNER<small>QUADRO DE RECORDES</small></h1>
     <div class="contagem"><b id="total">0</b><br />CORRIDAS</div>
   </header>
 
@@ -424,7 +430,7 @@ const PAGINA_PLACAR = `<!DOCTYPE html>
       <ol id="top" class="top"></ol>
       <div id="top-vazio" class="aviso">
         NINGUEM CORREU AINDA.<br />
-        ABRA O JOGO NOS COMPUTADORES EM <b>__ENDERECO__</b>
+        AGUARDANDO A PRIMEIRA CORRIDA.
       </div>
     </section>
 
@@ -435,16 +441,13 @@ const PAGINA_PLACAR = `<!DOCTYPE html>
     </section>
   </div>
 
-  <footer>
-    <span class="selo">TELA DE ACOMPANHAMENTO</span>
-    <span>AQUI NAO SE JOGA &middot; PARA JOGAR, ABRA <span class="onde">__ENDERECO__</span></span>
-    <span style="margin-left:auto">ATUALIZADO <b id="ha">AGORA</b></span>
+  <footer class="rodape">
+    <span class="pisca">★</span><span>STARDUST RUNNER</span><span class="pisca">★</span>
   </footer>
 
 <script>
   var vistos = Object.create(null);
   var primeiraCarga = true;
-  var ultimoOk = Date.now();
 
   function texto(pai, classe, valor) {
     var s = document.createElement('span');
@@ -506,12 +509,8 @@ const PAGINA_PLACAR = `<!DOCTYPE html>
     });
   }
 
-  function marcarOnline(ok) {
-    document.body.classList.toggle('offline', !ok);
-    document.getElementById('estado').textContent = ok ? 'AO VIVO' : 'SEM CONEXAO';
-    if (ok) ultimoOk = Date.now();
-  }
-
+  // Sem selo de estado: so busca e desenha. Se a rede falhar, mantem o
+  // ultimo placar na tela e tenta de novo em 3 s.
   function atualizar() {
     Promise.all([
       fetch('/api/top?limit=10', { cache: 'no-store' }).then(function (r) { return r.json(); }),
@@ -521,37 +520,19 @@ const PAGINA_PLACAR = `<!DOCTYPE html>
       desenharTop(res[0] || []);
       desenharFeed(res[1] || []);
       document.getElementById('total').textContent = (res[2] || {}).total || 0;
-      marcarOnline(true);
       primeiraCarga = false;
-    }).catch(function () {
-      marcarOnline(false);
-    });
-  }
-
-  // O contador de "atualizado ha X" corre sozinho: numa lista sem novidade,
-  // e ele que mostra que a tela nao travou.
-  function tique() {
-    var s = Math.round((Date.now() - ultimoOk) / 1000);
-    document.getElementById('ha').textContent =
-      s < 2 ? 'AGORA' : ('HA ' + s + ' S');
+    }).catch(function () { /* mantem o ultimo placar */ });
   }
 
   atualizar();
   setInterval(atualizar, 3000);
-  setInterval(tique, 1000);
 </script>
 </body>
 </html>`;
 
-/**
- * Monta a pagina com o endereco que o proprio visitante usou para chegar
- * aqui. Assim a instrucao "abra o jogo em ..." mostra o IP da rede quando a
- * tela e aberta pela rede, e localhost quando e na propria maquina.
- */
-function paginaPlacar(req) {
-  const host = (req.headers && req.headers.host) || ('localhost:' + PORTA);
-  const endereco = 'http://' + host + '/';
-  return PAGINA_PLACAR.split('__ENDERECO__').join(endereco);
+/** A pagina e estatica: os dados chegam via /api. Sem endereco, sem estado. */
+function paginaPlacar() {
+  return PAGINA_PLACAR;
 }
 
 /* ==========================================================================
