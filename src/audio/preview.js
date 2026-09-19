@@ -38,6 +38,22 @@ export async function renderizarTrilha(nome, segundos) {
   return offline.startRendering();
 }
 
+/**
+ * Renderiza UM efeito sonoro isolado. Serve para comparar variantes de
+ * mixagem com numero, em vez de no chute: o RMS aproxima a sensacao de
+ * volume melhor que o pico, porque leva o timbre em conta (uma onda
+ * quadrada soa bem mais presente que uma triangular no mesmo pico).
+ */
+export async function renderizarEfeito(metodo, argumento, segundos = 1) {
+  const offline = new OfflineAudioContext(1, Math.ceil(TAXA * segundos), TAXA);
+  const motor = new MotorAudio();
+  motor.iniciar(offline);
+  motor.mestre.gain.value = 1;
+  motor.ganhoSfx.gain.value = 0.85;
+  motor[metodo](argumento);
+  return offline.startRendering();
+}
+
 /** Converte um AudioBuffer mono em WAV PCM 16 bits. */
 export function paraWav(buffer) {
   const amostras = buffer.getChannelData(0);

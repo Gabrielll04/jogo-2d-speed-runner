@@ -43,7 +43,7 @@
   </div>
 
 <script type="module">
-  import { renderizarTrilha, paraWav, medir } from '/src/audio/preview.js';
+  import { renderizarTrilha, renderizarEfeito, paraWav, medir } from '/src/audio/preview.js';
 
   const cache = {};
 
@@ -79,6 +79,12 @@
       a.click();
     });
   });
+
+  // Mede um efeito isolado (mixagem): window.medirEfeito('sfxColeta', 0)
+  window.medirEfeito = async (metodo, argumento) => {
+    const buffer = await renderizarEfeito(metodo, argumento, 1);
+    return medir(buffer);
+  };
 
   // Usado pelos scripts de teste para pegar o WAV sem clicar em nada.
   // A conversao vai em blocos: passar 2 MB de uma vez para fromCharCode

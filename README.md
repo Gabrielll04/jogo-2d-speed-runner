@@ -399,9 +399,18 @@ conferir a mixagem depois de mexer em qualquer instrumento. Não entra no
 #### Mixagem dos efeitos
 
 O som da poeira estelar é o que mais toca no jogo — uma fileira dispara oito
-vezes seguidas, e com o ímã vira rajada. Ele é de propósito discreto e **cai
-ainda mais quando as coletas se atropelam**: sem isso, o detalhe vira o som
-mais alto da partida e cobre a música.
+vezes seguidas, e com o ímã vira rajada. Ele fica abaixo do volume dos demais
+e **cai ainda mais quando as coletas se atropelam**: sem isso, o detalhe vira
+o som mais alto da partida e cobre a música.
+
+Calibrá-lo levou três tentativas porque **volume não é só ganho, é timbre
+também**. Uma versão em onda triangular entregava 48% da energia da original
+com o pico quase igual — ou seja, subir o número não adiantava, o som sumia
+na mixagem do mesmo jeito. A página de prévia tem
+`window.medirEfeito('sfxColeta', 0)`, que renderiza um efeito isolado e
+devolve pico e RMS; o RMS aproxima a sensação de volume melhor que o pico
+justamente porque leva o timbre em conta. Hoje: onda quadrada a 0,125, que dá
+**~75% da energia da versão original** — dá para ouvir sem incomodar.
 
 ---
 

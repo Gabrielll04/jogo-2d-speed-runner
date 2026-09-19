@@ -59,6 +59,7 @@ export class MotorAudio {
     this.mudo = false;
     this.volume = 0.7;
     this.atenuacao = 1;              // o attract toca mais baixo que a partida
+    this.offline = false;            // true quando renderizando uma previa
     this.intensidade = 'off';        // 'off' | 'menu' | 'jogo'
     this.trilha = TRILHA;
     this.passoAtual = 0;
@@ -79,6 +80,7 @@ export class MotorAudio {
    */
   iniciar(ctxExterno) {
     if (this.pronto) return true;
+    this.offline = !!ctxExterno;
     if (ctxExterno) {
       this.ctx = ctxExterno;
     } else {
@@ -459,9 +461,13 @@ export class MotorAudio {
   /* Efeitos sonoros                                                     */
   /* ------------------------------------------------------------------ */
 
-  /** Todo efeito passa por aqui: sem contexto rodando, nem monta o grafo. */
+  /**
+   * Todo efeito passa por aqui: sem contexto rodando, nem monta o grafo.
+   * Um OfflineAudioContext fica 'suspended' ate o startRendering(), entao
+   * ele e liberado a parte - e o que permite medir efeito isolado.
+   */
   get podeTocar() {
-    return this.pronto && this.ctx.state === 'running';
+    return this.pronto && (this.offline || this.ctx.state === 'running');
   }
 
   sfxPulo() {
@@ -500,9 +506,15 @@ export class MotorAudio {
    * Arpejo de 2 notas; sobe conforme o combo.
    *
    * Some coisas acontecem muito: uma fileira de poeira dispara isto oito
-   * vezes seguidas, e com o ima pode ser uma rajada. Por isso o ganho e
-   * baixo e cai ainda mais quando as coletas se atropelam - senao o
-   * detalhe vira o som mais alto do jogo e cobre a musica.
+   * vezes seguidas, e com o ima pode ser uma rajada. Por isso o ganho fica
+   * abaixo do original e cai ainda mais quando as coletas se atropelam -
+   * senao o detalhe vira o som mais alto do jogo e cobre a musica.
+   *
+   * A onda e quadrada de proposito. Houve uma versao em triangular achando
+   * que so o ganho decidia o volume: medida no OfflineAudioContext, ela
+   * entregava 48% da energia do original mesmo com o pico quase igual, e
+   * sumia na mixagem. Square em 0,125 da ~75% do original - da pra ouvir
+   * sem incomodar. (window.medirEfeito na pagina de previa mede isso.)
    */
   sfxColeta(nivelCombo = 0) {
     if (!this.podeTocar) return;
@@ -510,14 +522,14 @@ export class MotorAudio {
     const desde = t - this.ultimaColeta;
     this.ultimaColeta = t;
     const atropelo = desde < 0.12 ? 0.55 : (desde < 0.25 ? 0.8 : 1);
-    const pico = 0.115 * atropelo;
+    const pico = 0.125 * atropelo;
 
     const base = 74 + Math.min(nivelCombo, 4) * 2;
     [0, 4].forEach((intervalo, i) => {
       const osc = this.ctx.createOscillator();
       const g = this.ctx.createGain();
       const inicio = t + i * 0.05;
-      osc.type = 'triangle';
+      osc.type = 'square';
       osc.frequency.setValueAtTime(freq(base + intervalo), inicio);
       g.gain.setValueAtTime(0.0001, inicio);
       g.gain.exponentialRampToValueAtTime(pico, inicio + 0.006);
