@@ -88,6 +88,7 @@ export class MotorAudio {
     this.pronto = false;
     this.mudo = false;
     this.volume = 0.7;
+    this.atenuacao = 1;              // o attract toca mais baixo que a partida
     this.intensidade = 'off';        // 'off' | 'menu' | 'jogo'
     this.trilha = TRILHA_MENU;
     this.passoAtual = 0;
@@ -121,7 +122,7 @@ export class MotorAudio {
     }
 
     this.mestre = this.ctx.createGain();
-    this.mestre.gain.value = this.mudo ? 0 : this.volume;
+    this.mestre.gain.value = this.mudo ? 0 : this.volume * this.atenuacao;
     this.mestre.connect(this.ctx.destination);
 
     // Compressor leve: segura os picos quando tudo toca junto.
@@ -155,7 +156,19 @@ export class MotorAudio {
 
     this.ruido = this.criarRuido();
     this.pronto = true;
-    if (!ctxExterno) this.retomar();
+
+    if (!ctxExterno) {
+      // O contexto pode nascer suspenso (politica de autoplay). Quando ele
+      // acordar - no primeiro gesto, ou logo de cara no modo quiosque - a
+      // trilha entra sozinha a partir daqui.
+      this.ctx.onstatechange = () => {
+        if (this.ctx.state === 'running' && this.intensidade !== 'off') {
+          this.proximoTempo = this.ctx.currentTime + 0.06;
+          this.ligarSequenciador();
+        }
+      };
+      this.retomar();
+    }
     return true;
   }
 
@@ -184,16 +197,68 @@ export class MotorAudio {
   /* ------------------------------------------------------------------ */
   setVolume(v) {
     this.volume = Math.max(0, Math.min(1, v));
-    if (this.mestre) {
-      this.mestre.gain.setTargetAtTime(this.mudo ? 0 : this.volume, this.ctx.currentTime, 0.02);
-    }
+    this.aplicarGanhoMestre(0.02);
   }
 
   setMudo(v) {
     this.mudo = !!v;
-    if (this.mestre) {
-      this.mestre.gain.setTargetAtTime(this.mudo ? 0 : this.volume, this.ctx.currentTime, 0.02);
+    this.aplicarGanhoMestre(0.02);
+  }
+
+  /**
+   * True quando existe audio para tocar mas o navegador esta segurando por
+   * falta de gesto. E o caso classico do PC do evento aberto e deixado em
+   * paz: a politica de autoplay mantem o contexto suspenso e a maquina fica
+   * muda sem nenhum erro no console.
+   */
+  get bloqueado() {
+    return this.pronto && !this.mudo && this.ctx.state !== 'running';
+  }
+
+  /** Multiplicador de 0 a 1 por cima do volume (o attract usa < 1). */
+  setAtenuacao(v) {
+    const novo = Math.max(0, Math.min(1, v));
+    if (novo === this.atenuacao) return;
+    this.atenuacao = novo;
+    this.aplicarGanhoMestre(0.25);
+  }
+
+  aplicarGanhoMestre(suavidade) {
+    if (!this.mestre) return;
+    const alvo = this.mudo ? 0 : this.volume * this.atenuacao;
+    this.mestre.gain.setTargetAtTime(alvo, this.ctx.currentTime, suavidade || 0.05);
+  }
+
+  /**
+   * Estado para diagnostico (window.stardust.audio()). No evento, saber se o
+   * contexto esta 'suspended' responde na hora por que a maquina esta muda.
+   */
+  diagnostico() {
+    return {
+      pronto: this.pronto,
+      contexto: this.ctx ? this.ctx.state : 'inexistente',
+      intensidade: this.intensidade,
+      trilha: this.trilha ? this.trilha.nome : null,
+      volume: this.volume,
+      atenuacao: this.atenuacao,
+      mudo: this.mudo,
+      nivel: this.medirNivel()
+    };
+  }
+
+  /** RMS instantaneo na saida: > 0 prova que esta saindo som de verdade. */
+  medirNivel() {
+    if (!this.pronto) return 0;
+    if (!this.analisador) {
+      this.analisador = this.ctx.createAnalyser();
+      this.analisador.fftSize = 1024;
+      this.mestre.connect(this.analisador);
+      this.amostras = new Float32Array(this.analisador.fftSize);
     }
+    this.analisador.getFloatTimeDomainData(this.amostras);
+    let soma = 0;
+    for (let i = 0; i < this.amostras.length; i++) soma += this.amostras[i] * this.amostras[i];
+    return Number(Math.sqrt(soma / this.amostras.length).toFixed(5));
   }
 
   /** 'off' | 'menu' (chiptune) | 'jogo' (synthwave) */
@@ -229,6 +294,9 @@ export class MotorAudio {
 
   ligarSequenciador() {
     if (this.timer) return;
+    // Nada de agendar notas num contexto suspenso: alem de nao soar, cada
+    // tentativa rende um aviso de autoplay no console.
+    if (this.ctx.state !== 'running') return;
     this.proximoTempo = this.ctx.currentTime + 0.06;
     this.timer = setInterval(() => this.agendar(), LOOKAHEAD_MS);
   }
@@ -488,8 +556,14 @@ export class MotorAudio {
   /* ------------------------------------------------------------------ */
   /* Efeitos sonoros                                                     */
   /* ------------------------------------------------------------------ */
+
+  /** Todo efeito passa por aqui: sem contexto rodando, nem monta o grafo. */
+  get podeTocar() {
+    return this.pronto && this.ctx.state === 'running';
+  }
+
   sfxPulo() {
-    if (!this.pronto) return;
+    if (!this.podeTocar) return;
     const t = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();
@@ -504,7 +578,7 @@ export class MotorAudio {
   }
 
   sfxDeslize() {
-    if (!this.pronto) return;
+    if (!this.podeTocar) return;
     const t = this.ctx.currentTime;
     const fonte = this.ctx.createBufferSource();
     fonte.buffer = this.ruido;
@@ -529,12 +603,12 @@ export class MotorAudio {
    * detalhe vira o som mais alto do jogo e cobre a musica.
    */
   sfxColeta(nivelCombo = 0) {
-    if (!this.pronto) return;
+    if (!this.podeTocar) return;
     const t = this.ctx.currentTime;
     const desde = t - this.ultimaColeta;
     this.ultimaColeta = t;
     const atropelo = desde < 0.12 ? 0.55 : (desde < 0.25 ? 0.8 : 1);
-    const pico = 0.085 * atropelo;
+    const pico = 0.115 * atropelo;
 
     const base = 74 + Math.min(nivelCombo, 4) * 2;
     [0, 4].forEach((intervalo, i) => {
@@ -553,7 +627,7 @@ export class MotorAudio {
 
   /** Marco de combo: arpejo ascendente de 4 notas. */
   sfxCombo(nivel) {
-    if (!this.pronto) return;
+    if (!this.podeTocar) return;
     const t = this.ctx.currentTime;
     const base = 69 + nivel * 3;
     [0, 4, 7, 12].forEach((intervalo, i) => {
@@ -573,7 +647,7 @@ export class MotorAudio {
   }
 
   sfxPowerup() {
-    if (!this.pronto) return;
+    if (!this.podeTocar) return;
     const t = this.ctx.currentTime;
     for (let i = 0; i < 6; i++) {
       const inicio = t + i * 0.038;
@@ -590,7 +664,7 @@ export class MotorAudio {
   }
 
   sfxDano() {
-    if (!this.pronto) return;
+    if (!this.podeTocar) return;
     const t = this.ctx.currentTime;
     const fonte = this.ctx.createBufferSource();
     fonte.buffer = this.ruido;
@@ -617,7 +691,7 @@ export class MotorAudio {
   }
 
   sfxQuaseAcidente() {
-    if (!this.pronto) return;
+    if (!this.podeTocar) return;
     const t = this.ctx.currentTime;
     const fonte = this.ctx.createBufferSource();
     fonte.buffer = this.ruido;
@@ -636,7 +710,7 @@ export class MotorAudio {
   }
 
   sfxUi(agudo = false) {
-    if (!this.pronto) return;
+    if (!this.podeTocar) return;
     const t = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();
@@ -651,7 +725,7 @@ export class MotorAudio {
 
   /** Som grave e longo do buraco negro se aproximando. */
   sfxBuracoNegro() {
-    if (!this.pronto) return;
+    if (!this.podeTocar) return;
     const t = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();

@@ -161,9 +161,11 @@ export class Jogo {
     const d = this.bot.decidir(
       dt, jog, this.mundo.obstaculos.ativos, this.mundo.poeira.ativos, this.velocidade
     );
-    if (d.trocar !== 0) jog.trocarPista(d.trocar);
-    if (d.pular) jog.pular();
-    if (d.deslizar) jog.deslizar();
+    // O bot toca os mesmos efeitos de quem joga: uma demo em silencio nao
+    // convence ninguem a chegar perto da maquina.
+    if (d.trocar !== 0 && jog.trocarPista(d.trocar)) audio.sfxUi();
+    if (d.pular && jog.pular()) audio.sfxPulo();
+    if (d.deslizar && jog.deslizar()) audio.sfxDeslize();
   }
 
   /* ------------------------------------------------------------------ */

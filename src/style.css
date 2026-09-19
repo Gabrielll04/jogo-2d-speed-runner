@@ -688,6 +688,22 @@ body.sem-scanlines #scanlines { display: none; }
 }
 .aviso-qualidade.visivel { opacity: 1; }
 
+/* So aparece quando o navegador esta segurando o audio por falta de gesto.
+   Sem isto, a maquina fica muda no evento sem nenhuma pista do porque. */
+.aviso-som {
+  position: absolute;
+  right: calc(var(--u) * 2);
+  bottom: calc(var(--u) * 2);
+  z-index: 30;
+  font-size: calc(var(--u) * 1.5);
+  letter-spacing: calc(var(--u) * 0.18);
+  color: var(--texto-fraco);
+  background: rgba(2, 3, 10, 0.8);
+  border-left: calc(var(--u) * 0.3) solid var(--ciano);
+  padding: calc(var(--u) * 0.5) calc(var(--u) * 1.1);
+  pointer-events: none;
+}
+
 .toque-guia {
   position: absolute;
   left: 50%; bottom: calc(var(--u) * 6);

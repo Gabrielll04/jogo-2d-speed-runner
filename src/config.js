@@ -178,6 +178,13 @@ export const SEGUNDOS_ATE_ATTRACT = 60;
  * tecla traz o menu de volta; ENTER comeca a partida direto.
  */
 export const SEGUNDOS_ATE_VITRINE = 30;
+
+/**
+ * Quanto do volume o attract usa. Fliperama mudo nao convida ninguem, mas
+ * isto fica numa sala de aula: a demo toca mais baixa que a partida, e sobe
+ * para o volume cheio assim que alguem comeca a jogar.
+ */
+export const VOLUME_ATTRACT = 0.6;
 export const INTERVALO_CAMERA_CINEMA = 11;   // segundos entre tomadas do bot
 
 /* -------------------------------------------------------------------------

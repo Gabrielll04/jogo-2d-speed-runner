@@ -53,12 +53,13 @@ O objetivo aqui é: **nenhuma internet, nenhum `npm install` no PC da escola.**
 npm run build
 ```
 
-### 2. Copie três itens para o pendrive
+### 2. Copie quatro itens para o pendrive
 
 ```
-dist/            <- o jogo compilado
-server.js        <- servidor local (Node puro, sem dependências)
-package.json     <- só para o Node saber que server.js é um módulo ES
+dist/                <- o jogo compilado
+server.js            <- servidor local (Node puro, sem dependências)
+package.json         <- só para o Node saber que server.js é um módulo ES
+abrir-quiosque.bat   <- abre o Chrome em modo fliperama (Windows)
 ```
 
 Nada de `node_modules/`. Nada de `src/`.
@@ -99,11 +100,32 @@ O **attract mode** tem dois estágios:
    ENTER começa a partida direto.
 
 De qualquer outra tela (apelido, pausa, fim), 60 segundos parados devolvem o
-jogo ao attract. Para deixar redondo, abra o Chrome assim:
+jogo ao attract.
+
+No Windows, use o atalho que já vai junto:
 
 ```
-chrome.exe --kiosk --autoplay-policy=no-user-gesture-required http://localhost:3000/
+abrir-quiosque.bat
 ```
+
+> #### Sem a flag de autoplay, a máquina fica MUDA
+>
+> Um fliperama em silêncio não convida ninguém — e é exatamente o que os
+> navegadores fazem por padrão: sem alguém apertar uma tecla, a política de
+> autoplay mantém o `AudioContext` suspenso e **nada toca**, sem nenhum erro
+> no console. O jogo tenta ligar o som assim que a página abre, mas quem
+> decide é o navegador.
+>
+> Por isso o `abrir-quiosque.bat` usa:
+>
+> ```
+> chrome.exe --kiosk --autoplay-policy=no-user-gesture-required http://localhost:3000/
+> ```
+>
+> Medido nos dois cenários: **com** a flag, o attract toca sozinho desde o
+> carregamento; **sem** ela, fica em silêncio até a primeira tecla — e aí o
+> jogo mostra um aviso discreto no canto ("SOM BLOQUEADO PELO NAVEGADOR"),
+> que some sozinho assim que alguém encosta no teclado.
 
 > Sem Node no PC da escola? Qualquer servidor estático serve para o jogo em si
 > (o `dist/` é só HTML + JS + CSS). O que exige o `server.js` é o placar
@@ -351,8 +373,21 @@ O sequenciador usa lookahead: o `setInterval` só decide *o que* agendar, e
 quem toca no tempo certo é o relógio do `AudioContext`. O neon da pista e o
 núcleo do jogador pulsam no kick.
 
-O `AudioContext` só é criado no **primeiro input do jogador**, como os
-navegadores exigem.
+#### Quando o som entra
+
+O jogo tenta abrir o `AudioContext` **assim que a página carrega** — é o que
+permite ao attract tocar sozinho no PC do evento. Se a política de autoplay do
+navegador bloquear, o contexto nasce suspenso, um aviso discreto aparece no
+canto e o primeiro gesto o acorda. Veja
+[modo quiosque](#modo-quiosque-pc-do-evento-rodando-sozinho).
+
+**O attract toca mais baixo que a partida** (`VOLUME_ATTRACT`, 60% do volume):
+isto vive numa sala de aula, então a demo chama a atenção sem dominar o
+ambiente, e sobe para o volume cheio quando alguém começa a jogar.
+
+**O bot faz barulho.** Ele toca os mesmos efeitos de pulo, deslize e troca de
+pista de quem está jogando — uma demo silenciosa não convence ninguém a
+chegar perto da máquina.
 
 #### Ouvindo as trilhas sem abrir o jogo
 
@@ -394,6 +429,7 @@ Quase tudo que dá para balancear está em `src/config.js`:
 | `BURACO_NEGRO`                       | frequência, alcance e força do puxão    |
 | `SEGUNDOS_ATE_ATTRACT`               | ociosidade até voltar para a demo       |
 | `SEGUNDOS_ATE_VITRINE`               | ociosidade até o menu sair da frente    |
+| `VOLUME_ATTRACT`                     | quanto do volume a demo usa (0 a 1)     |
 | `GAP_TEMPO_INICIAL/FINAL`            | respiro entre padrões, em segundos      |
 | `ESPACAMENTO_INICIAL/FINAL`          | esticamento dos `z` dentro do padrão    |
 | `GOVERNADOR`                         | limiares do ajuste automático de fps    |
@@ -409,6 +445,7 @@ ficou apertado demais e o de padrões avisa se algum virou impossível.
 ```
 index.html              estrutura das telas (HUD e menus em DOM)
 previa-audio.html       página para ouvir e medir as trilhas (só em dev)
+abrir-quiosque.bat      abre o Chrome em modo fliperama, com o som liberado
 server.js               servidor do evento (http + fs + path, zero npm)
 src/
   main.js               bootstrap, loop principal, máquina de estados
@@ -510,9 +547,12 @@ derruba a resolução sozinho, mas dá para fixar em BAIXA na tela `C`
 (Configurações). Feche as outras abas: num PC integrado, uma aba com vídeo
 rodando come mais GPU que o jogo inteiro.
 
-**O som não começa** — é proposital: o `AudioContext` só nasce depois do
-primeiro input. Aperte qualquer tecla. Se continuar mudo, confira o `M` e o
-volume em Configurações.
+**O som não começa** — se aparecer "SOM BLOQUEADO PELO NAVEGADOR" no canto, é
+a política de autoplay: aperte qualquer tecla, ou abra pelo
+`abrir-quiosque.bat` para o attract tocar sozinho. Se continuar mudo, confira
+o `M` e o volume em Configurações, e rode `window.stardust.audio()` no console
+(F12) — ele mostra o estado do contexto, a trilha em uso e o nível de saída
+naquele instante.
 
 **O placar não recebe nada** — abra o console do navegador (F12) na hora de
 morrer: o jogo diz o que aconteceu. Um **404** quase sempre significa que

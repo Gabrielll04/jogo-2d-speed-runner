@@ -7,7 +7,8 @@
 
 import './style.css';
 import {
-  NOME_JOGO, SEGUNDOS_ATE_ATTRACT, SEGUNDOS_ATE_VITRINE, RESOLUCOES, PONTOS
+  NOME_JOGO, SEGUNDOS_ATE_ATTRACT, SEGUNDOS_ATE_VITRINE, VOLUME_ATTRACT,
+  RESOLUCOES, PONTOS
 } from './config.js';
 import { RenderizadorPixel } from './core/renderer.js';
 import { Governador } from './core/quality.js';
@@ -43,6 +44,7 @@ class Aplicacao {
     this.topRemoto = null;
     this.ultimoQuadro = 0;
     this.pausadoPorAba = false;
+    this.tempoChecarSom = 0;
   }
 
   /* ------------------------------------------------------------------ */
@@ -80,12 +82,13 @@ class Aplicacao {
     this.jogo.mundo.aplicarQualidade(qualidadeInicial, this.governador.escalaParticulas);
 
     input.aoAgir((acao, origem) => this.tratarAcao(acao, origem));
-    input.noPrimeiroGesto(() => {
-      if (audio.iniciar()) {
-        this.aplicarPreferenciasAudio();
-        audio.setIntensidade(this.fase === FASE.JOGANDO ? 'jogo' : 'menu');
-      }
-    });
+
+    // Fliperama nao espera ninguem chegar para ligar o som. Tentamos abrir o
+    // AudioContext ja no carregamento: se a politica de autoplay do navegador
+    // deixar (o modo quiosque do README deixa), a demo toca sozinha; se nao,
+    // o contexto nasce suspenso e o primeiro gesto o acorda.
+    this.ligarAudio();
+    input.noPrimeiroGesto(() => this.ligarAudio());
 
     this.ligarEventosDeJanela();
 
@@ -116,6 +119,19 @@ class Aplicacao {
   aplicarPreferenciasAudio() {
     audio.setVolume(prefs.get('volume'));
     audio.setMudo(prefs.get('mudo'));
+  }
+
+  /** Liga (ou acorda) o audio e deixa a trilha certa para a fase atual. */
+  ligarAudio() {
+    // iniciar() ja tenta acordar o contexto na primeira vez; repetir o resume
+    // aqui so renderia um segundo aviso de autoplay no console.
+    const primeiraVez = !audio.pronto;
+    if (!audio.iniciar()) return;
+    if (!primeiraVez) audio.retomar();
+    this.aplicarPreferenciasAudio();
+    const jogando = this.fase === FASE.JOGANDO;
+    audio.setAtenuacao(this.fase === FASE.ATTRACT ? VOLUME_ATTRACT : 1);
+    audio.setIntensidade(jogando ? 'jogo' : 'menu');
   }
 
   aplicarPreferenciasVideo() {
@@ -186,6 +202,8 @@ class Aplicacao {
     // entra depois de o PC ficar parado.
     this.telas.setVitrine(false);
     this.telas.abrirAttract(this.topRemoto);
+    // A demo toca, mas mais baixa que a partida: isto vive numa sala de aula.
+    audio.setAtenuacao(VOLUME_ATTRACT);
     audio.setIntensidade('menu');
     this.tempoAposMorteBot = 0;
     this.atualizarPlacarRemoto();
@@ -220,6 +238,7 @@ class Aplicacao {
     this.tempoContagem = 0;
     this.telas.setContagem('3');
     audio.sfxUi();
+    audio.setAtenuacao(1);          // quem esta jogando merece o volume cheio
     audio.setIntensidade('jogo');
   }
 
@@ -404,6 +423,7 @@ class Aplicacao {
     this.governador.atualizar(dt);
 
     this.avancarFluxo(dt);
+    this.conferirSom(dt);
     this.jogo.atualizar(dt);
 
     if (this.fase === FASE.JOGANDO) {
@@ -411,6 +431,15 @@ class Aplicacao {
     }
 
     this.renderizador.render(this.jogo.mundo.cena, this.jogo.mundo.camera);
+  }
+
+  /** Mostra o aviso de som bloqueado (checado 2x por segundo, nao por quadro). */
+  conferirSom(dt) {
+    this.tempoChecarSom -= dt;
+    if (this.tempoChecarSom > 0) return;
+    this.tempoChecarSom = 0.5;
+    const mostrar = audio.bloqueado && this.fase === FASE.ATTRACT;
+    document.getElementById('aviso-som').classList.toggle('oculto', !mostrar);
   }
 
   avancarFluxo(dt) {
@@ -477,6 +506,8 @@ if (ehRotaPlacar()) {
     resolucoes: RESOLUCOES,
     combos: PONTOS.degrausCombo,
     // Entra no modo vitrine na hora, sem esperar os 30 s de ociosidade.
-    forcarVitrine: () => app.telas.setVitrine(true)
+    forcarVitrine: () => app.telas.setVitrine(true),
+    // Por que esta maquina esta muda? contexto 'suspended' = falta um gesto.
+    audio: () => audio.diagnostico()
   };
 }
