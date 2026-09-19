@@ -1,9 +1,9 @@
 /* ==========================================================================
-   PREVIA DAS TRILHAS
+   PREVIA DA TRILHA
 
-   Renderiza uma das trilhas num OfflineAudioContext e devolve um WAV. Serve
-   para ouvir a musica sem abrir o jogo e para conferir numericamente se ela
-   esta estourando (clipping) ou baixa demais.
+   Renderiza a trilha num OfflineAudioContext e devolve um WAV. Serve para
+   ouvir a musica sem abrir o jogo e para conferir numericamente se ela esta
+   estourando (clipping) ou baixa demais.
 
    Nada do jogo importa este arquivo, entao ele nao entra no bundle final.
    ========================================================================== */

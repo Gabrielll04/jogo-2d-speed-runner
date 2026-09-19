@@ -352,22 +352,17 @@ renderizar e cara de ignorar.
 
 ### Áudio
 
-Tudo sintetizado com Web Audio API — nenhum arquivo de som. São **duas
-trilhas diferentes**, não a mesma música em volumes diferentes:
+Tudo sintetizado com Web Audio API — nenhum arquivo de som. É **uma trilha
+só**, do menu ao fim de jogo: synthwave espacial em lá menor a 100 BPM,
+progressão Am–F–C–G, com kick, caixa, hats, baixo em arpejo, pad etéreo e um
+lead esparso com eco.
 
-| | Menu | Jogo |
-|---|---|---|
-| estilo | chiptune de fliperama | synthwave espacial |
-| tom | Dó maior | Lá menor |
-| andamento | 124 BPM | 100 BPM |
-| progressão | I–V–vi–IV | Am–F–C–G |
-| o que puxa | melodia em onda quadrada, com arpejo de 16 avos e caixa marcando o 2 e o 4 | pad etéreo, baixo em arpejo e lead esparso com eco |
-
-As duas compartilham o mesmo conjunto de notas (lá menor e seu relativo
-maior), então a troca entre uma e outra muda o humor sem soar como mudança de
-assunto. Ao trocar, a faixa volta ao começo da frase e sobe do zero em 0,25 s
-— a música nova entra no tempo certo, em vez de continuar do meio do compasso
-da anterior.
+> Houve uma tentativa de dar ao menu uma faixa chiptune própria. Ela foi
+> reprovada no playtest — repetitiva e irritante depois de alguns minutos, que
+> é exatamente quanto tempo um PC de evento passa parado no attract. O que
+> separa o menu da partida é o **volume**, não a música. Isso tem uma vantagem
+> que a versão de duas faixas não tinha: a trilha corre contínua quando o jogo
+> começa, sem corte no meio da frase.
 
 O sequenciador usa lookahead: o `setInterval` só decide *o que* agendar, e
 quem toca no tempo certo é o relógio do `AudioContext`. O neon da pista e o
@@ -389,18 +384,17 @@ ambiente, e sobe para o volume cheio quando alguém começa a jogar.
 pista de quem está jogando — uma demo silenciosa não convence ninguém a
 chegar perto da máquina.
 
-#### Ouvindo as trilhas sem abrir o jogo
+#### Ouvindo a trilha sem abrir o jogo
 
 ```bash
 npm run dev
 # abra http://localhost:5173/previa-audio.html
 ```
 
-A página renderiza cada trilha num `OfflineAudioContext`, toca ali mesmo,
-deixa baixar o `.wav` e mostra pico, RMS e quantas amostras estouraram. Foi
-com ela que os níveis das duas faixas foram igualados (o menu ficava 5 dB
-acima do jogo e dava um susto quando a partida começava; hoje são ~3 dB, que
-é o tanto que um chamariz de fliperama pede). A página não entra no `dist/`.
+A página renderiza a trilha num `OfflineAudioContext`, toca ali mesmo, deixa
+baixar o `.wav` e mostra pico, RMS e quantas amostras estouraram — útil para
+conferir a mixagem depois de mexer em qualquer instrumento. Não entra no
+`dist/`.
 
 #### Mixagem dos efeitos
 
@@ -458,7 +452,7 @@ src/
     storage.js          preferências, apelido e recorde (localStorage)
     rng.js              aleatório com semente e utilidades de interpolação
   audio/
-    audio.js            SFX e as duas trilhas, 100% sintetizados
+    audio.js            SFX e a trilha, 100% sintetizados
     preview.js          renderiza uma trilha em WAV (fora do bundle)
   gfx/
     textures.js         texturas procedurais desenhadas em <canvas>
