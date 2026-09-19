@@ -11,7 +11,8 @@
     "serve": "node server.js",
     "test:padroes": "node src/game/patterns.test.js",
     "test:hitbox": "node src/game/hitbox.test.js",
-    "test": "npm run test:padroes && npm run test:hitbox"
+    "test:ritmo": "node src/game/pacing.test.js",
+    "test": "npm run test:padroes && npm run test:hitbox && npm run test:ritmo"
   },
   "dependencies": {
     "three": "^0.170.0"

@@ -6,7 +6,9 @@
    ========================================================================== */
 
 import './style.css';
-import { NOME_JOGO, SEGUNDOS_ATE_ATTRACT, RESOLUCOES, PONTOS } from './config.js';
+import {
+  NOME_JOGO, SEGUNDOS_ATE_ATTRACT, SEGUNDOS_ATE_VITRINE, RESOLUCOES, PONTOS
+} from './config.js';
 import { RenderizadorPixel } from './core/renderer.js';
 import { Governador } from './core/quality.js';
 import { input, alternarTelaCheia } from './core/input.js';
@@ -179,6 +181,9 @@ class Aplicacao {
     this.fase = FASE.ATTRACT;
     this.hud.mostrar(false);
     this.jogo.comecar(true);
+    // Quem acabou de chegar aqui merece ver o menu inteiro; a vitrine so
+    // entra depois de o PC ficar parado.
+    this.telas.setVitrine(false);
     this.telas.abrirAttract(this.topRemoto);
     audio.setIntensidade('menu');
     this.tempoAposMorteBot = 0;
@@ -325,7 +330,13 @@ class Aplicacao {
 
     switch (this.fase) {
       case FASE.ATTRACT:
-        if (acao === 'confirmar') this.entrarNickname();
+        if (acao === 'confirmar') {
+          this.entrarNickname();
+        } else if (this.telas.vitrine) {
+          // Qualquer outra tecla tira a vitrine e traz o menu de volta.
+          this.telas.setVitrine(false);
+          audio.sfxUi();
+        }
         break;
 
       case FASE.NICK:
@@ -421,6 +432,13 @@ class Aplicacao {
       return;
     }
 
+    /* --- attract parado: o menu sai e a partida do bot toma a tela --- */
+    if (this.fase === FASE.ATTRACT
+        && !this.telas.vitrine
+        && input.ociosoSegundos() > SEGUNDOS_ATE_VITRINE) {
+      this.telas.setVitrine(true);
+    }
+
     /* --- bot morreu no attract: recomeca a demo --- */
     if (this.fase === FASE.ATTRACT && this.tempoAposMorteBot > 0) {
       this.tempoAposMorteBot -= dt;
@@ -445,11 +463,13 @@ class Aplicacao {
 const app = new Aplicacao();
 app.iniciar();
 
-// Atalho de depuracao para os testes na escola: window.stardust.fps()
+// Atalhos de depuracao para os testes na escola: window.stardust.fps()
 window.stardust = {
   versao: '1.0.0',
   jogo: () => app.jogo,
   fps: () => app.governador.fps,
   resolucoes: RESOLUCOES,
-  combos: PONTOS.degrausCombo
+  combos: PONTOS.degrausCombo,
+  // Entra no modo vitrine na hora, sem esperar os 30 s de ociosidade.
+  forcarVitrine: () => app.telas.setVitrine(true)
 };

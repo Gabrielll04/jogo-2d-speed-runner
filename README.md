@@ -88,9 +88,18 @@ Para usar outra porta: `PORT=8080 node server.js` (no Windows,
 
 ### Modo quiosque (PC do evento rodando sozinho)
 
-O jogo já tem **attract mode**: depois de 60 segundos sem ninguém tocar no
-teclado, um bot começa a jogar sozinho com câmeras cinematográficas, e a tela
-volta a convidar "PRESSIONE ENTER". Para deixar redondo, abra o Chrome assim:
+O **attract mode** tem dois estágios:
+
+1. **Menu** — logo, controles, placar e a legenda dos obstáculos, com o bot
+   jogando ao fundo.
+2. **Vitrine** — depois de **30 segundos** sem ninguém encostar no teclado, o
+   menu sai da frente: some o painel, o escurecimento quase desaparece e a
+   partida do bot toma a tela inteira, com a marca no alto e um
+   "APERTE ENTER!" piscando embaixo. Qualquer tecla traz o menu de volta;
+   ENTER começa a partida direto.
+
+De qualquer outra tela (apelido, pausa, fim), 60 segundos parados devolvem o
+jogo ao attract. Para deixar redondo, abra o Chrome assim:
 
 ```
 chrome.exe --kiosk --autoplay-policy=no-user-gesture-required http://localhost:3000/
@@ -221,8 +230,22 @@ o retângulo do canvas. Texto nítido, mundo pixelado.
 
 ### Dificuldade e a regra de ouro
 
-A velocidade vai de 21 a 45 unidades/s numa curva suave com teto em 3200 m. O
-espaço entre padrões encolhe de 30 para 15 unidades no mesmo ritmo.
+A velocidade vai de 21 a 45 unidades/s numa curva com teto em 3200 m, que
+segura a subida nos primeiros metros — a 500 m o jogo ainda está a 23 u/s.
+
+**O respiro entre obstáculos é medido em segundos, não em unidades.** Essa foi
+a correção de um playtest em que o jogo ficava punitivo: uma folga fixa de 15
+unidades vale 0,7 s a 21 u/s e só 0,33 s a 45 u/s, então a dificuldade crescia
+duas vezes (mais rápido **e** mais denso). Hoje o `spawner` converte o gap de
+tempo em distância na hora de instanciar, e também estica os `z` internos do
+padrão conforme a velocidade sobe. O resultado, medido pelo
+[teste de ritmo](#testes):
+
+| | antes | agora |
+|---|---|---|
+| pior intervalo entre decisões | 0,20 s | 0,46 s |
+| 5% piores (p05)               | 0,22 s | 0,49 s |
+| intervalo típico (mediana)    | 0,63 s | 1,28 s |
 
 Os obstáculos não são sorteados um a um: vêm de um **catálogo de padrões**
 (`src/game/patterns.js`), cada um com pesos para fácil/médio/difícil. Todo
@@ -323,11 +346,13 @@ Quase tudo que dá para balancear está em `src/config.js`:
 | `CAMERA`, `FOG`                      | enquadramento e alcance de visão        |
 | `JOGADOR`                            | pulo, deslize, hitbox, inclinação       |
 | `VELOCIDADE_INICIAL/MAXIMA`, `DIST_TETO` | curva de dificuldade                |
-| `GAP_PADRAO_INICIAL/FINAL`           | respiro entre padrões                   |
 | `PONTOS`                             | pontuação, combos, margem de raspada    |
 | `POWERUPS`, `COOLDOWN_POWERUP`       | duração e raridade dos power-ups        |
 | `BURACO_NEGRO`                       | frequência, alcance e força do puxão    |
 | `SEGUNDOS_ATE_ATTRACT`               | ociosidade até voltar para a demo       |
+| `SEGUNDOS_ATE_VITRINE`               | ociosidade até o menu sair da frente    |
+| `GAP_TEMPO_INICIAL/FINAL`            | respiro entre padrões, em segundos      |
+| `ESPACAMENTO_INICIAL/FINAL`          | esticamento dos `z` dentro do padrão    |
 | `GOVERNADOR`                         | limiares do ajuste automático de fps    |
 | `SUGESTOES_NICK`                     | apelidos sugeridos                      |
 
@@ -362,11 +387,13 @@ src/
     particles.js        pool único de partículas (ShaderMaterial + Points)
   game/
     game.js             as regras: estados, colisões, power-ups, dano
+    dificuldade.js      curva de velocidade e de ritmo (módulo puro)
     world.js            a cena 3D e a câmera
     patterns.js         catálogo de padrões + validador de rota
     hitboxes.js         tipos e caixas de colisão (módulo puro, sem Three)
     patterns.test.js    teste do catálogo (roda em Node puro)
     hitbox.test.js      teste das janelas de pulo e deslize
+    pacing.test.js      teste do ritmo entre decisões
     spawner.js          o que nasce lá na frente
     obstacles.js        pools dos três tipos de obstáculo
     collectibles.js     poeira estelar e power-ups
@@ -385,9 +412,10 @@ src/
 ## Testes
 
 ```bash
-npm test              # roda os dois testes abaixo
+npm test              # roda os três testes abaixo
 npm run test:padroes  # catálogo de padrões e validador de rota
 npm run test:hitbox   # caixas de colisão e janelas de ação
+npm run test:ritmo    # quanto tempo existe entre uma decisão e a próxima
 ```
 
 Rodam em **Node puro**, sem navegador — por isso `game/hitboxes.js`,
@@ -404,6 +432,13 @@ aparece lendo código: foi esse teste que mostrou que, na velocidade inicial, a
 janela para pular o asteroide era de 90 ms — precisão de 5 quadros. Hoje o
 mínimo exigido é 180 ms, e a janela real fica em torno de 240 ms para o pulo e
 480 ms para o deslize.
+
+**`test:ritmo`** roda o `spawner` de verdade com pools de mentira e mede o
+intervalo de **tempo** entre decisões consecutivas ao longo de 12 corridas de
+4000 m. Ele tem piso **e teto**: reprova um jogo punitivo (decisão chegando em
+menos de 0,42 s) e também reprova um jogo frouxo (mediana acima de 1,9 s), que
+é o jeito fácil de "resolver" dificuldade espalhando tudo até sobrar pista
+vazia.
 
 Saída típica:
 

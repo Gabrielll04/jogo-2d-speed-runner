@@ -165,6 +165,14 @@ body.sem-scanlines #scanlines { display: none; }
   margin-top: calc(var(--u) * -0.6);
 }
 
+/* Logo e etiqueta andam juntos: sem isso o space-between do modo vitrine
+   jogaria a etiqueta para o meio da tela. */
+.bloco-marca {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 /* --- logo --- */
 .logo {
   position: relative;
@@ -324,6 +332,58 @@ body.sem-scanlines #scanlines { display: none; }
   0%, 60% { opacity: 1; }
   61%, 100% { opacity: 0.42; }
 }
+
+/* ---------- modo vitrine ----------
+   Depois de 30 s parado o menu sai da frente: some o painel, o escurecimento
+   quase desaparece e quem ocupa a tela e a partida do bot. Fica so a marca
+   no alto e a chamada embaixo - um fliperama chamando quem passa. */
+#tela-attract.vitrine { padding: calc(var(--u) * 3) calc(var(--u) * 4); }
+#tela-attract.vitrine .attract-escurece {
+  background: linear-gradient(to top,
+    rgba(2, 3, 10, 0.88) 0%,
+    rgba(2, 3, 10, 0.25) 22%,
+    rgba(2, 3, 10, 0) 45%,
+    rgba(2, 3, 10, 0.55) 100%);
+}
+#tela-attract.vitrine .attract-conteudo {
+  height: 100%;
+  max-width: none;
+  justify-content: space-between;
+  gap: 0;
+}
+#tela-attract.vitrine .attract-colunas,
+#tela-attract.vitrine .tagline,
+#tela-attract.vitrine .legenda-obstaculos { display: none; }
+#tela-attract.vitrine .bloco-marca {
+  transform: scale(0.58);
+  transform-origin: top center;
+  opacity: 0.92;
+}
+#tela-attract.vitrine .chamada { animation-name: vitrine-pisca; }
+@keyframes vitrine-pisca {
+  0%, 60% { opacity: 1; }
+  61%, 100% { opacity: 0.62; }
+}
+#tela-attract.vitrine .chamada {
+  font-size: calc(var(--u) * 4.6);
+  letter-spacing: calc(var(--u) * 0.72);
+  color: var(--ciano);
+  text-shadow:
+    0 0 calc(var(--u) * 2) rgba(2, 3, 10, 1),
+    0 0 calc(var(--u) * 3.4) rgba(34, 230, 255, 0.5);
+  margin-bottom: calc(var(--u) * 3);
+}
+/* Fica logo abaixo da marca, no alto, e NAO pisca junto com a chamada:
+   e uma etiqueta, nao um convite. */
+#tela-attract.vitrine .marca-demo {
+  display: block;
+  font-size: calc(var(--u) * 1.5);
+  letter-spacing: calc(var(--u) * 0.42);
+  color: var(--texto-fraco);
+  margin-top: calc(var(--u) * 0.6);
+  text-shadow: 0 0 calc(var(--u) * 1.2) rgba(2, 3, 10, 0.95);
+}
+.marca-demo { display: none; }
 
 /* ==================== NICKNAME ==================== */
 .campo-nick {

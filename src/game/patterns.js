@@ -72,14 +72,14 @@ export const PADROES = [
   },
   {
     nome: 'desvio-duplo',
-    comprimento: 22,
+    comprimento: 25,
     peso: [4, 8, 8],
     espelhavel: true,
     itens: [
       { z: 0, pista: 0, tipo: PAREDE },
       { z: 0, pista: 1, tipo: PAREDE },
-      { z: 12, pista: 2, tipo: PAREDE },
-      { z: 12, pista: 1, tipo: PAREDE }
+      { z: 15, pista: 2, tipo: PAREDE },
+      { z: 15, pista: 1, tipo: PAREDE }
     ]
   },
   {
@@ -128,13 +128,13 @@ export const PADROES = [
   },
   {
     nome: 'zigue-zague',
-    comprimento: 34,
+    comprimento: 36,
     peso: [2, 7, 9],
     espelhavel: true,
     itens: [
       { z: 0, pista: 0, tipo: PAREDE },
-      { z: 11, pista: 1, tipo: PAREDE },
-      { z: 22, pista: 2, tipo: PAREDE }
+      { z: 15, pista: 1, tipo: PAREDE },
+      { z: 30, pista: 2, tipo: PAREDE }
     ]
   },
   {
@@ -174,9 +174,9 @@ export const PADROES = [
       { z: 0, pista: 0, tipo: PAREDE },
       { z: 0, pista: 1, tipo: PORTAO },
       { z: 0, pista: 2, tipo: PAREDE },
-      { z: 14, pista: 0, tipo: PAREDE },
-      { z: 14, pista: 1, tipo: BAIXO },
-      { z: 14, pista: 2, tipo: PAREDE }
+      { z: 17, pista: 0, tipo: PAREDE },
+      { z: 17, pista: 1, tipo: BAIXO },
+      { z: 17, pista: 2, tipo: PAREDE }
     ]
   },
   {
@@ -187,34 +187,34 @@ export const PADROES = [
     itens: [
       { z: 0, pista: 0, tipo: PORTAO },
       { z: 0, pista: 1, tipo: PAREDE },
-      { z: 14, pista: 1, tipo: BAIXO },
-      { z: 14, pista: 2, tipo: PAREDE }
+      { z: 17, pista: 1, tipo: BAIXO },
+      { z: 17, pista: 2, tipo: PAREDE }
     ]
   },
   {
     nome: 'lixo-espacial',
-    comprimento: 28,
+    comprimento: 34,
     peso: [2, 6, 8],
     espelhavel: true,
     itens: [
       { z: 0, pista: 2, tipo: PAREDE },
-      { z: 9, pista: 1, tipo: BAIXO },
-      { z: 18, pista: 0, tipo: PAREDE },
-      { z: 18, pista: 1, tipo: PORTAO }
+      { z: 14, pista: 1, tipo: BAIXO },
+      { z: 28, pista: 0, tipo: PAREDE },
+      { z: 28, pista: 1, tipo: PORTAO }
     ]
   },
   {
     nome: 'muralha-quebrada',
-    comprimento: 32,
+    comprimento: 36,
     peso: [1, 4, 9],
     espelhavel: true,
     itens: [
       { z: 0, pista: 1, tipo: PAREDE },
       { z: 0, pista: 2, tipo: PAREDE },
-      { z: 10, pista: 0, tipo: PAREDE },
-      { z: 10, pista: 1, tipo: PORTAO },
-      { z: 20, pista: 1, tipo: PAREDE },
-      { z: 20, pista: 2, tipo: BAIXO }
+      { z: 15, pista: 0, tipo: PAREDE },
+      { z: 15, pista: 1, tipo: PORTAO },
+      { z: 30, pista: 1, tipo: PAREDE },
+      { z: 30, pista: 2, tipo: BAIXO }
     ]
   }
 ];

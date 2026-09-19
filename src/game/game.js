@@ -10,7 +10,7 @@
    ========================================================================== */
 
 import {
-  VELOCIDADE_INICIAL, VELOCIDADE_MAXIMA, DIST_TETO, JOGADOR, CORES,
+  JOGADOR, CORES,
   POWERUPS, FATOR_DILATACAO, BURACO_NEGRO, PONTOS, Z_RECICLA,
   INTERVALO_CAMERA_CINEMA
 } from '../config.js';
@@ -18,6 +18,7 @@ import { Mundo } from './world.js';
 import { Spawner } from './spawner.js';
 import { Pontuacao } from './score.js';
 import { Bot } from './bot.js';
+import { curvaDificuldade, velocidadeDe } from './dificuldade.js';
 import { PoolPoeira, PoolPowerups } from './collectibles.js';
 import {
   novaCaixa, caixaDoObstaculo, sobrepoe, pegouColetavel, raspou
@@ -62,7 +63,7 @@ export class Jogo {
     this.pontuacao.reiniciar();
     this.bot.reiniciar();
 
-    this.velocidade = VELOCIDADE_INICIAL;
+    this.velocidade = velocidadeDe(0);
     this.tempoPartida = 0;
     this.invulneravel = 0;
     this.temEscudo = false;
@@ -141,11 +142,10 @@ export class Jogo {
   }
 
   atualizarDificuldade() {
-    const t = Math.min(1, this.pontuacao.distancia / DIST_TETO);
-    // Curva suave: rapido no comeco, quase plana no fim.
-    this.dificuldade = 1 - Math.pow(1 - t, 1.7);
-    this.velocidade = VELOCIDADE_INICIAL
-      + (VELOCIDADE_MAXIMA - VELOCIDADE_INICIAL) * this.dificuldade;
+    // A curva vive em game/dificuldade.js para o teste de ritmo medir
+    // exatamente a mesma conta que o jogo roda.
+    this.dificuldade = curvaDificuldade(this.pontuacao.distancia);
+    this.velocidade = velocidadeDe(this.dificuldade);
   }
 
   atualizarTomadas(dt) {

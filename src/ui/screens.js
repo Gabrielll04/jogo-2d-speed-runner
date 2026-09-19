@@ -64,10 +64,22 @@ export class Telas {
   /* ------------------------------------------------------------------ */
   /* ATTRACT                                                             */
   /* ------------------------------------------------------------------ */
-  async abrirAttract(topRemoto) {
+  abrirAttract(topRemoto) {
     this.mostrar('tela-attract');
-    el('chamada-texto').textContent = 'PRESSIONE ENTER PARA COMECAR';
     this.desenharPlacar(topRemoto);
+    this.setVitrine(this.vitrine);
+  }
+
+  /**
+   * Modo vitrine: o menu sai da frente e a partida do bot vira o assunto
+   * da tela. Chamado quando o PC fica parado no attract.
+   */
+  setVitrine(ativo) {
+    this.vitrine = !!ativo;
+    el('tela-attract').classList.toggle('vitrine', this.vitrine);
+    el('chamada-texto').textContent = this.vitrine
+      ? 'APERTE ENTER!'
+      : 'PRESSIONE ENTER PARA COMECAR';
   }
 
   desenharPlacar(topRemoto) {

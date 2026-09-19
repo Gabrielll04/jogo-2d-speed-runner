@@ -10,10 +10,10 @@
    ========================================================================== */
 
 import {
-  PISTAS, DIST_SPAWN, GAP_PADRAO_INICIAL, GAP_PADRAO_FINAL,
-  COOLDOWN_POWERUP, DIST_PRIMEIRO_POWERUP, POWERUPS
+  PISTAS, DIST_SPAWN, COOLDOWN_POWERUP, DIST_PRIMEIRO_POWERUP, POWERUPS
 } from '../config.js';
 import { sortearPadrao, rotaViavel, montarCamadas, PORTAO } from './patterns.js';
+import { gapEmSegundos, fatorEspacamento, velocidadeDe } from './dificuldade.js';
 import { entre, inteiro, escolher } from '../core/rng.js';
 
 const CHAVES_POWERUP = Object.keys(POWERUPS);
@@ -47,15 +47,20 @@ export class Spawner {
     if (this.distanciaAteProximo > 0) return;
 
     const padrao = sortearPadrao(this.rng, dificuldade);
-    const gap = GAP_PADRAO_INICIAL + (GAP_PADRAO_FINAL - GAP_PADRAO_INICIAL) * dificuldade;
+    const velocidade = velocidadeDe(dificuldade);
+    // O respiro e pensado em segundos e so entao vira distancia: assim o
+    // intervalo entre padroes nao encolhe sozinho quando o jogo acelera.
+    const gap = gapEmSegundos(dificuldade) * velocidade;
+    const escala = fatorEspacamento(dificuldade);
 
-    this.instanciar(padrao, dificuldade, distancia, gap);
+    this.instanciar(padrao, dificuldade, distancia, gap, escala);
 
-    this.distanciaAteProximo = padrao.comprimento + gap * entre(this.rng, 0.85, 1.2);
+    this.distanciaAteProximo = padrao.comprimento * escala
+      + gap * entre(this.rng, 0.95, 1.3);
     this.padroesGerados++;
   }
 
-  instanciar(padrao, dificuldade, distancia, gap) {
+  instanciar(padrao, dificuldade, distancia, gap, escala) {
     const base = -DIST_SPAWN;
 
     // Rota garantida, partindo da ultima pista onde o jogador ficou seguro.
@@ -65,15 +70,17 @@ export class Spawner {
     const caminho = rota.rota || camadas.map(() => 1);
 
     /* ---------- obstaculos ---------- */
+    // Os z do catalogo sao esticados pela escala: o desenho do padrao e o
+    // mesmo, mas as camadas se afastam conforme o jogo fica mais rapido.
     for (const item of padrao.itens) {
-      this.obstaculos.criar(item.tipo, item.pista, PISTAS[item.pista], base - item.z);
+      this.obstaculos.criar(item.tipo, item.pista, PISTAS[item.pista], base - item.z * escala);
     }
 
     /* ---------- poeira sobre a rota ---------- */
     for (let c = 0; c < camadas.length; c++) {
       const pista = caminho[c];
-      const zCamada = camadas[c].z;
-      const zAnterior = c === 0 ? zCamada - 9 : camadas[c - 1].z;
+      const zCamada = camadas[c].z * escala;
+      const zAnterior = c === 0 ? zCamada - 9 : camadas[c - 1].z * escala;
       const vao = zCamada - zAnterior;
       const quantos = Math.max(1, Math.floor(vao / ESPACO_POEIRA) - 1);
       const tipoCamada = camadas[c].pistas[pista];
@@ -91,7 +98,7 @@ export class Spawner {
       : 1;
     this.ultimaPistaSegura = pistaFinal;
 
-    const zFim = padrao.comprimento;
+    const zFim = padrao.comprimento * escala;
     const quantosVao = Math.max(3, Math.floor((gap * 0.62) / ESPACO_POEIRA));
     const fazArco = this.rng() < 0.32;
     const pistaVao = this.rng() < 0.7

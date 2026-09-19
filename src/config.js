@@ -114,9 +114,21 @@ export const VELOCIDADE_INICIAL = 21;
 export const VELOCIDADE_MAXIMA = 45;
 export const DIST_TETO = 3200;           // metros ate a dificuldade estabilizar
 
-/** Espaco livre entre padroes (unidades): folgado no inicio, apertado no fim. */
-export const GAP_PADRAO_INICIAL = 30;
-export const GAP_PADRAO_FINAL = 15;
+/**
+ * Respiro entre dois padroes, em SEGUNDOS (nao em unidades).
+ * Medir em unidades foi o que deixou o jogo punitivo: a mesma folga vale
+ * o dobro de tempo na velocidade inicial e some quando o jogo acelera.
+ */
+export const GAP_TEMPO_INICIAL = 1.4;
+export const GAP_TEMPO_FINAL = 0.82;
+
+/**
+ * Quanto os z internos de um padrao sao esticados conforme a dificuldade.
+ * 1.0 = como escrito no catalogo. Acima disso, as camadas se afastam para
+ * compensar a velocidade e manter o intervalo de decisao humano.
+ */
+export const ESPACAMENTO_INICIAL = 1.0;
+export const ESPACAMENTO_FINAL = 1.5;
 
 /* -------------------------------------------------------------------------
    PONTUACAO
@@ -160,6 +172,12 @@ export const BURACO_NEGRO = {
    ATTRACT MODE
    ------------------------------------------------------------------------- */
 export const SEGUNDOS_ATE_ATTRACT = 60;
+/**
+ * Dentro do attract, quantos segundos parados ate o menu sair da frente e
+ * deixar a partida do bot ocupar a tela inteira (modo vitrine). Qualquer
+ * tecla traz o menu de volta; ENTER comeca a partida direto.
+ */
+export const SEGUNDOS_ATE_VITRINE = 30;
 export const INTERVALO_CAMERA_CINEMA = 11;   // segundos entre tomadas do bot
 
 /* -------------------------------------------------------------------------
