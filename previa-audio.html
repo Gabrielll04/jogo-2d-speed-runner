@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<title>PREVIA DAS TRILHAS - STARDUST RUNNER</title>
+<style>
+  body {
+    background: #02030a; color: #e8f4ff; min-height: 100vh; margin: 0; padding: 6vh 6vw;
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  h1 { font-size: 28px; letter-spacing: .14em; text-shadow: 2px 0 0 #ff2f87, -2px 0 0 #22e6ff; }
+  p { color: #6d84a8; letter-spacing: .1em; line-height: 1.7; max-width: 60ch; }
+  .faixas { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 30px; }
+  .faixa {
+    border: 1px solid rgba(34,230,255,.4); padding: 20px 24px; min-width: 280px;
+    background: linear-gradient(180deg, rgba(10,15,42,.9), rgba(2,3,10,.94));
+  }
+  h2 { font-size: 15px; letter-spacing: .3em; color: #ffd23f; margin: 0 0 14px; }
+  button {
+    background: transparent; border: 1px solid rgba(34,230,255,.5); color: #22e6ff;
+    font-family: inherit; font-size: 13px; letter-spacing: .14em;
+    padding: 8px 16px; margin-right: 8px; cursor: pointer;
+  }
+  button:hover { background: rgba(34,230,255,.14); }
+  audio { display: block; margin-top: 14px; width: 100%; }
+  .medida { margin-top: 12px; font-size: 12px; color: #6d84a8; letter-spacing: .08em; white-space: pre; }
+</style>
+</head>
+<body>
+  <h1>PREVIA DAS TRILHAS</h1>
+  <p>
+    As duas musicas do jogo, renderizadas fora do navegador em
+    OfflineAudioContext. Serve para ouvir sem abrir o jogo e para conferir se
+    a mixagem esta estourando.
+  </p>
+  <div class="faixas">
+    <div class="faixa" data-trilha="menu">
+      <h2>MENU</h2>
+      <button data-acao="gerar">GERAR 24 S</button>
+      <button data-acao="baixar">BAIXAR WAV</button>
+      <div class="medida"></div>
+    </div>
+    <div class="faixa" data-trilha="jogo">
+      <h2>JOGO</h2>
+      <button data-acao="gerar">GERAR 24 S</button>
+      <button data-acao="baixar">BAIXAR WAV</button>
+      <div class="medida"></div>
+    </div>
+  </div>
+
+<script type="module">
+  import { renderizarTrilha, paraWav, medir } from '/src/audio/preview.js';
+
+  const cache = {};
+
+  async function gerar(nome, caixa) {
+    caixa.querySelector('.medida').textContent = 'renderizando...';
+    const buffer = await renderizarTrilha(nome, 24);
+    const wav = paraWav(buffer);
+    const m = medir(buffer);
+    cache[nome] = wav;
+
+    const antigo = caixa.querySelector('audio');
+    if (antigo) antigo.remove();
+    const audio = document.createElement('audio');
+    audio.controls = true;
+    audio.src = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
+    caixa.appendChild(audio);
+
+    caixa.querySelector('.medida').textContent =
+      'pico ' + m.pico + '   rms ' + m.rms + '\n' +
+      'amostras estouradas: ' + m.estouradas + '\n' +
+      'duracao: ' + m.segundos + ' s';
+    return m;
+  }
+
+  document.querySelectorAll('.faixa').forEach((caixa) => {
+    const nome = caixa.dataset.trilha;
+    caixa.querySelector('[data-acao="gerar"]').addEventListener('click', () => gerar(nome, caixa));
+    caixa.querySelector('[data-acao="baixar"]').addEventListener('click', async () => {
+      if (!cache[nome]) await gerar(nome, caixa);
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([cache[nome]], { type: 'audio/wav' }));
+      a.download = 'stardust-' + nome + '.wav';
+      a.click();
+    });
+  });
+
+  // Usado pelos scripts de teste para pegar o WAV sem clicar em nada.
+  // A conversao vai em blocos: passar 2 MB de uma vez para fromCharCode
+  // estoura a pilha de chamadas.
+  window.gerarTrilha = async (nome, segundos = 24) => {
+    const buffer = await renderizarTrilha(nome, segundos);
+    const wav = paraWav(buffer);
+    let binario = '';
+    const BLOCO = 8192;
+    for (let i = 0; i < wav.length; i += BLOCO) {
+      binario += String.fromCharCode.apply(null, wav.subarray(i, i + BLOCO));
+    }
+    return { medida: medir(buffer), base64: btoa(binario) };
+  };
+</script>
+</body>
+</html>

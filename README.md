@@ -321,15 +321,49 @@ renderizar e cara de ignorar.
 
 ### Áudio
 
-Tudo sintetizado com Web Audio API: kick, hats, baixo em arpejo, pad etéreo e
-um lead com eco, num loop synthwave em lá menor a 100 BPM com progressão
-Am–F–C–G. O sequenciador usa lookahead (o `setInterval` só decide o que
-agendar; quem toca no tempo certo é o relógio do `AudioContext`). Duas
-intensidades: calma nos menus, completa no jogo. O neon da pista e o núcleo do
-jogador pulsam no kick.
+Tudo sintetizado com Web Audio API — nenhum arquivo de som. São **duas
+trilhas diferentes**, não a mesma música em volumes diferentes:
+
+| | Menu | Jogo |
+|---|---|---|
+| estilo | chiptune de fliperama | synthwave espacial |
+| tom | Dó maior | Lá menor |
+| andamento | 124 BPM | 100 BPM |
+| progressão | I–V–vi–IV | Am–F–C–G |
+| o que puxa | melodia em onda quadrada, com arpejo de 16 avos e caixa marcando o 2 e o 4 | pad etéreo, baixo em arpejo e lead esparso com eco |
+
+As duas compartilham o mesmo conjunto de notas (lá menor e seu relativo
+maior), então a troca entre uma e outra muda o humor sem soar como mudança de
+assunto. Ao trocar, a faixa volta ao começo da frase e sobe do zero em 0,25 s
+— a música nova entra no tempo certo, em vez de continuar do meio do compasso
+da anterior.
+
+O sequenciador usa lookahead: o `setInterval` só decide *o que* agendar, e
+quem toca no tempo certo é o relógio do `AudioContext`. O neon da pista e o
+núcleo do jogador pulsam no kick.
 
 O `AudioContext` só é criado no **primeiro input do jogador**, como os
 navegadores exigem.
+
+#### Ouvindo as trilhas sem abrir o jogo
+
+```bash
+npm run dev
+# abra http://localhost:5173/previa-audio.html
+```
+
+A página renderiza cada trilha num `OfflineAudioContext`, toca ali mesmo,
+deixa baixar o `.wav` e mostra pico, RMS e quantas amostras estouraram. Foi
+com ela que os níveis das duas faixas foram igualados (o menu ficava 5 dB
+acima do jogo e dava um susto quando a partida começava; hoje são ~3 dB, que
+é o tanto que um chamariz de fliperama pede). A página não entra no `dist/`.
+
+#### Mixagem dos efeitos
+
+O som da poeira estelar é o que mais toca no jogo — uma fileira dispara oito
+vezes seguidas, e com o ímã vira rajada. Ele é de propósito discreto e **cai
+ainda mais quando as coletas se atropelam**: sem isso, o detalhe vira o som
+mais alto da partida e cobre a música.
 
 ---
 
@@ -365,6 +399,7 @@ ficou apertado demais e o de padrões avisa se algum virou impossível.
 
 ```
 index.html              estrutura das telas (HUD e menus em DOM)
+previa-audio.html       página para ouvir e medir as trilhas (só em dev)
 server.js               servidor do evento (http + fs + path, zero npm)
 src/
   main.js               bootstrap, loop principal, máquina de estados
@@ -377,7 +412,8 @@ src/
     storage.js          preferências, apelido e recorde (localStorage)
     rng.js              aleatório com semente e utilidades de interpolação
   audio/
-    audio.js            SFX e trilha synthwave, 100% sintetizados
+    audio.js            SFX e as duas trilhas, 100% sintetizados
+    preview.js          renderiza uma trilha em WAV (fora do bundle)
   gfx/
     textures.js         texturas procedurais desenhadas em <canvas>
     track.js            pista neon (InstancedMesh para travessas e postes)
